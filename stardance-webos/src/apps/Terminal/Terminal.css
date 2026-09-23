@@ -1,0 +1,55 @@
+.term {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* The terminal is always dark, whatever the OS theme — pin its own palette. */
+  --color-text: #eae6dc;
+  --color-text-dim: #a8a396;
+  --color-accent: #e0653a;
+  --color-accent-text: #e0653a;
+  background: #0e0d0b;
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px;
+  overflow: hidden;
+  cursor: text;
+}
+
+.term__out {
+  flex: 1;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.term__line--err {
+  color: #ee7a68;
+}
+
+.term__line--in {
+  color: var(--color-text-dim);
+}
+
+.term__prompt-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.term__prompt {
+  color: var(--color-accent-text);
+  white-space: nowrap;
+}
+
+.term__input {
+  min-height: 24px;
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: inherit;
+}

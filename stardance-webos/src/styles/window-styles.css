@@ -1,0 +1,559 @@
+/* ------------------------------------------------------------------ */
+/* Window chrome styles — "traffic", "linux", "yk2000", "aero"        */
+/* Ported from @maomaolabs/core (MIT, (c) 2026 MaoMao Labs).          */
+/*                                                                    */
+/* Selectors target the DOM contract that <Window> renders:           */
+/*   [data-system-style=…] .window-header / .window-title /           */
+/*   .brand-text / .window-controls / button.terminal-btn[data-action] */
+/*                                                                    */
+/* The upstream `@media (prefers-color-scheme: dark)` blocks were     */
+/* rewritten to follow the OS theme instead of the browser setting:   */
+/* dark = any theme except data-theme="light".                        */
+/* ------------------------------------------------------------------ */
+
+/* ------------------------------------- */
+/* Traffic Light Theme Styles    */
+/* ------------------------------------- */
+
+[data-system-style="traffic"] .window-header,
+[data-system-style="traffic"] .window-header {
+  flex-direction: row-reverse;
+}
+
+[data-system-style="traffic"] .window-controls {
+  gap: 8px;
+}
+
+[data-system-style="traffic"] button.terminal-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent !important;
+  background-color: #e5e5e5;
+  transition: background-color 0.25s ease-out, opacity 0.25s ease-out, filter 0.25s ease-out;
+}
+
+[data-system-style="traffic"] button.terminal-btn:disabled {
+  background-color: #e5e5e5 !important;
+  opacity: 1;
+}
+
+[data-system-style="traffic"] button.terminal-btn svg {
+  width: 8px;
+  height: 8px;
+  stroke: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity 0.25s ease-out;
+}
+
+[data-system-style="traffic"] div:hover button.terminal-btn:not(:disabled) svg {
+  opacity: 1;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="close"] {
+  order: 1;
+  background-color: #ff5f56;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="close"]:active:not(:disabled) {
+  background-color: #bf4740;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="minimize"] {
+  order: 2;
+  background-color: #ffbd2e;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="minimize"]:active:not(:disabled) {
+  background-color: #bf8e22;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="maximize"] {
+  order: 3;
+  background-color: #27c93f;
+}
+
+[data-system-style="traffic"] button.terminal-btn[data-action="maximize"]:active:not(:disabled) {
+  background-color: #1da031;
+}
+
+[data-system-style="traffic"] button.terminal-btn:hover:not(:disabled) {
+  filter: brightness(1.25) saturate(1.2);
+}
+
+:root:not([data-theme="light"]) [data-system-style="traffic"] button.terminal-btn:disabled {
+    background-color: #3f3f3f !important;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="traffic"] button.terminal-btn svg {
+    stroke: rgba(0, 0, 0, 0.7);
+  }
+
+:root:not([data-theme="light"]) [data-system-style="traffic"] button.terminal-btn:hover:not(:disabled) {
+    filter: brightness(0.75) saturate(1.3);
+  }
+
+
+/* ------------------------------------- */
+/* Linux (Ubuntu Ambiance) Theme Styles  */
+/* ------------------------------------- */
+
+[data-system-style="linux"] .window-header,
+[data-system-style="linux"] .window-header {
+  flex-direction: row-reverse;
+}
+
+[data-system-style="linux"] .window-controls {
+  gap: 8px;
+}
+
+[data-system-style="linux"] button.terminal-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, #f5f4f2 0%, #e6e5e1 100%);
+  border: 1px solid #c2c0bc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background 0.25s ease-out, color 0.25s ease-out, border-color 0.25s ease-out, filter 0.25s ease-out;
+}
+
+[data-system-style="linux"] button.terminal-btn:disabled {
+  opacity: 0.4;
+  background: #e6e5e1;
+}
+
+[data-system-style="linux"] button.terminal-btn svg {
+  width: 8px;
+  height: 8px;
+  stroke: currentColor;
+  transition: stroke 0.25s ease-out;
+}
+
+[data-system-style="linux"] button.terminal-btn[data-action="close"] {
+  background: linear-gradient(180deg, #e86350 0%, #d84b35 100%);
+  border-color: #ba321e;
+  color: white;
+}
+
+[data-system-style="linux"] button.terminal-btn:hover:not(:disabled) {
+  color: rgba(0, 0, 0, 0.9);
+  filter: brightness(1.05);
+}
+
+[data-system-style="linux"] button.terminal-btn[data-action="close"]:hover:not(:disabled) {
+  color: white;
+  filter: brightness(1.1);
+}
+
+[data-system-style="linux"] button.terminal-btn[data-action="close"] {
+  order: 1;
+}
+
+[data-system-style="linux"] button.terminal-btn[data-action="minimize"] {
+  order: 2;
+}
+
+[data-system-style="linux"] button.terminal-btn[data-action="maximize"] {
+  order: 3;
+}
+
+:root:not([data-theme="light"]) [data-system-style="linux"] button.terminal-btn {
+    color: rgba(255, 255, 255, 0.7);
+    background: linear-gradient(180deg, #5c5955 0%, #3e3b37 100%);
+    border-color: #2b2926;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+:root:not([data-theme="light"]) [data-system-style="linux"] button.terminal-btn:disabled {
+    opacity: 0.4;
+    background: #3e3b37;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="linux"] button.terminal-btn[data-action="close"] {
+    background: linear-gradient(180deg, #c4402a 0%, #a02814 100%);
+    border-color: #7b1d0e;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="linux"] button.terminal-btn:hover:not(:disabled) {
+    color: white;
+    filter: brightness(1.2);
+  }
+
+
+/* ------------------------------------- */
+/* YK2000 Theme Styles */
+/* ------------------------------------- */
+
+[data-system-style="yk2000"] {
+  border-radius: 0;
+  border: 1px solid #ffffff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  box-shadow: inset 1px 1px 0px 0px #ffffff,
+    inset -1px -1px 0px 0px #808080,
+    1px 1px 0px 0px #000000;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  font-family: "Tahoma", "Segoe UI", sans-serif;
+}
+
+[data-system-style="yk2000"] .window-header,
+[data-system-style="yk2000"].focused .window-header {
+  background: linear-gradient(90deg, #0a246a 0%, #a6caf0 100%);
+  border-bottom: none;
+  color: white;
+  height: 28px;
+  padding: 0 4px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+[data-system-style="yk2000"].focused {
+  box-shadow: inset 1px 1px 0px 0px #ffffff,
+    inset -1px -1px 0px 0px #808080,
+    2px 2px 0px 0px #000000;
+}
+
+[data-system-style="yk2000"] .window-title,
+[data-system-style="yk2000"] .brand-text {
+  font-family: "Tahoma", "Segoe UI", sans-serif;
+  font-weight: bold;
+  font-size: 13px;
+  color: white;
+  text-shadow: none;
+}
+
+[data-system-style="yk2000"] .window-controls {
+  gap: 4px;
+}
+
+[data-system-style="yk2000"] button.terminal-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d4d0c8;
+  color: black;
+  border: 1px solid #ffffff;
+  border-right-color: #404040;
+  border-bottom-color: #404040;
+  box-shadow: inset -1px -1px 0px 0px #808080;
+  transition: none;
+}
+
+[data-system-style="yk2000"] button.terminal-btn:active:not(:disabled) {
+  border: 1px solid #404040;
+  border-right-color: #ffffff;
+  border-bottom-color: #ffffff;
+  box-shadow: inset 1px 1px 0px 0px #000000;
+  background: #d4d0c8;
+  padding-top: 1px;
+  padding-left: 1px;
+}
+
+[data-system-style="yk2000"] button.terminal-btn:disabled {
+  color: #808080;
+  text-shadow: 1px 1px 0px #ffffff;
+  opacity: 1;
+  background:
+    repeating-linear-gradient(135deg,
+      transparent,
+      transparent 2px,
+      rgba(43, 43, 43, 0.6) 2px,
+      rgba(43, 43, 43, 0.6) 4px),
+    #d4d0c8;
+}
+
+[data-system-style="yk2000"] button.terminal-btn svg {
+  width: 10px;
+  height: 10px;
+  stroke: black;
+  stroke-width: 2px;
+}
+
+[data-system-style="yk2000"] button.terminal-btn[data-action="close"] {
+  order: 3;
+}
+
+[data-system-style="yk2000"] button.terminal-btn[data-action="minimize"] {
+  order: 1;
+}
+
+[data-system-style="yk2000"] button.terminal-btn[data-action="maximize"] {
+  order: 2;
+}
+
+:root:not([data-theme="light"]) [data-system-style="yk2000"] .window-header,
+:root:not([data-theme="light"]) [data-system-style="yk2000"].focused .window-header {
+    background: linear-gradient(90deg, #0a246a 0%, rgb(19, 19, 19) 100%);
+  }
+
+
+/* ------------------------------------- */
+/* Aero Glass Theme Styles               */
+/* ------------------------------------- */
+
+[data-system-style="aero"] {
+  border-radius: 6px;
+  border: 1px solid #808080;
+  box-shadow: inset 0 0 0 1px #c8d8ec;
+  background: #dce6f5 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-system-style="aero"] .window-header,
+[data-system-style="aero"].focused .window-header {
+  height: 30px;
+  background: linear-gradient(180deg,
+      #b4d2f5 0%,
+      #8cb9eb 50%,
+      #6ea0e1 51%,
+      #a0c8f5 100%);
+  border-bottom: 1px solid #5082c8;
+  color: #000;
+  text-shadow: 0 1px 0 #fff;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  padding: 0 8px;
+}
+
+[data-system-style="aero"]:not(.focused) {
+  background: #f0f0f0 !important;
+  box-shadow: inset 0 0 0 1px #d8d8d8;
+}
+
+[data-system-style="aero"]:not(.focused) .window-header {
+  background: linear-gradient(180deg,
+      #d2dceb 0%,
+      #becde1 50%,
+      #afc0d7 51%,
+      #c8d7e6 100%);
+  border-bottom: 1px solid #96aac8;
+  color: #666;
+  text-shadow: none;
+}
+
+[data-system-style="aero"] .window-title,
+[data-system-style="aero"] .brand-text {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  font-size: 13px;
+}
+
+[data-system-style="aero"] .window-controls {
+  gap: 1px;
+  margin-right: -4px;
+}
+
+/* --- Default button --- */
+[data-system-style="aero"] button.terminal-btn {
+  width: 28px;
+  height: 20px;
+  border-radius: 0 0 3px 3px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg,
+      #f0f6ff 0%,
+      #c8d8f0 40%,
+      #96b4dc 40%,
+      #b4d2f0 100%);
+  border: 1px solid #b3b3b3;
+  border-top: none;
+  box-shadow: inset 0 0 2px #e8f0fa;
+  color: #000;
+  transition: all 0.1s ease-out;
+  margin-top: -10px;
+}
+
+[data-system-style="aero"] button.terminal-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg,
+      #ffffff 0%,
+      #b4dcff 40%,
+      #6ab4f0 40%,
+      #96dcff 100%);
+  border-color: #808080;
+  box-shadow: inset 0 0 3px #fff, 0 0 5px #64c8ff;
+}
+
+[data-system-style="aero"] button.terminal-btn:active:not(:disabled) {
+  background: linear-gradient(180deg,
+      #d2d2d2 0%,
+      #78a0c8 40%,
+      #5082c8 40%,
+      #6ea0e4 100%);
+  box-shadow: inset 0 2px 4px #4a6680;
+}
+
+[data-system-style="aero"] button.terminal-btn:disabled {
+  opacity: 0.5;
+  filter: grayscale(100%);
+}
+
+[data-system-style="aero"] button.terminal-btn svg {
+  width: 10px;
+  height: 10px;
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+/* --- Close button --- */
+[data-system-style="aero"] button.terminal-btn[data-action="close"] {
+  width: 44px;
+  background: linear-gradient(180deg,
+      #fff0f0 0%,
+      #f1c9c9 40%,
+      #de7676 40%,
+      #e89191 100%);
+  border-color: #9a5a5a;
+  border-radius: 0 0 4px 0;
+  order: 3;
+}
+
+[data-system-style="aero"] button.terminal-btn[data-action="close"] svg {
+  width: 12px;
+  height: 12px;
+  stroke: #fff;
+  filter: drop-shadow(0 0 2px #000);
+}
+
+[data-system-style="aero"] button.terminal-btn[data-action="close"]:hover:not(:disabled) {
+  background: linear-gradient(180deg,
+      #ffcfcf 0%,
+      #ffabab 40%,
+      #dc1e1e 40%,
+      #ff7878 100%);
+  border-color: #660000;
+  box-shadow: inset 0 0 3px #ffcccc, 0 0 8px #ff3232;
+}
+
+[data-system-style="aero"] button.terminal-btn[data-action="close"]:active:not(:disabled) {
+  background: linear-gradient(180deg,
+      #d36363 0%,
+      #c33c3c 40%,
+      #a41414 40%,
+      #c85050 100%);
+  box-shadow: inset 0 2px 5px #6e0000;
+}
+
+/* --- Minimize / Maximize order --- */
+[data-system-style="aero"] button.terminal-btn[data-action="minimize"] {
+  order: 1;
+  border-radius: 0 0 0 4px;
+}
+
+[data-system-style="aero"] button.terminal-btn[data-action="maximize"] {
+  order: 2;
+}
+
+/* =========================================== */
+/* Dark mode                                   */
+/* =========================================== */
+:root:not([data-theme="light"]) [data-system-style="aero"] {
+    background: #1e2832 !important;
+    border-color: #000;
+    box-shadow:
+      inset 0 0 0 1px #2a3646;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"]:not(.focused) {
+    background: #282d32 !important;
+    box-shadow: inset 0 0 0 1px #1e2228;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] .window-header,
+:root:not([data-theme="light"]) [data-system-style="aero"].focused .window-header {
+    background: linear-gradient(180deg,
+        #28374b 0%,
+        #1e2d41 50%,
+        #142337 51%,
+        #233246 100%);
+    border-bottom: 1px solid #000;
+    color: #fff;
+    text-shadow: 0 1px 2px #000;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"]:not(.focused) .window-header {
+    background: linear-gradient(180deg,
+        #32373c 0%,
+        #282d34 50%,
+        #21262d 51%,
+        #2c323a 100%);
+    border-bottom: 1px solid #000;
+    color: #999;
+  }
+
+:root:not([data-theme="light"]) /* --- Dark default button --- */
+  [data-system-style="aero"] button.terminal-btn {
+    background: linear-gradient(180deg,
+        #505a64 0%,
+        #323c46 40%,
+        #141e28 40%,
+        #283246 100%);
+    border-color: #000;
+    box-shadow: inset 0 1px 1px #3a4e66;
+    color: #fff;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] button.terminal-btn svg {
+    stroke: #fff;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] button.terminal-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg,
+        #788eb4 0%,
+        #506e8c 40%,
+        #325a82 40%,
+        #5082b4 100%);
+    box-shadow: inset 0 1px 2px #6496c8, 0 0 5px #64b4ff;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] button.terminal-btn:active:not(:disabled) {
+    background: linear-gradient(180deg,
+        #283246 0%,
+        #1e2c3c 40%,
+        #0a1628 40%,
+        #1e2a3c 100%);
+    box-shadow: inset 0 2px 4px #000;
+  }
+
+:root:not([data-theme="light"]) /* --- Dark close button --- */
+  [data-system-style="aero"] button.terminal-btn[data-action="close"] {
+    background: linear-gradient(180deg,
+        #963232 0%,
+        #781e1e 40%,
+        #640a0a 40%,
+        #822828 100%);
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] button.terminal-btn[data-action="close"]:hover:not(:disabled) {
+    background: linear-gradient(180deg,
+        #dc6464 0%,
+        #c83c3c 40%,
+        #b41414 40%,
+        #dc5050 100%);
+    box-shadow: inset 0 1px 2px #ff9696, 0 0 8px #ff3232;
+  }
+
+:root:not([data-theme="light"]) [data-system-style="aero"] button.terminal-btn[data-action="close"]:active:not(:disabled) {
+    background: linear-gradient(180deg,
+        #641414 0%,
+        #500a0a 40%,
+        #3c0000 40%,
+        #580e0e 100%);
+    box-shadow: inset 0 2px 4px #000;
+  }
+

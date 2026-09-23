@@ -1,0 +1,50 @@
+.startmenu-scrim { position: fixed; inset: 0 0 var(--taskbar-height) 0; z-index: calc(var(--z-taskbar) - 1); }
+
+.startmenu {
+  position: fixed;
+  left: var(--space-2);
+  bottom: calc(var(--taskbar-height) + var(--space-2));
+  width: min(520px, calc(100vw - 16px));
+  max-height: min(620px, calc(100dvh - var(--taskbar-height) - 24px));
+  display: flex;
+  flex-direction: column;
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  z-index: var(--z-menu);
+  overflow: hidden;
+  animation: os-pop-in var(--duration) var(--ease);
+}
+
+.startmenu__search { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-3) var(--space-3) var(--space-1); padding: 0 var(--space-3); min-height: 36px; color: var(--color-text-dim); background: var(--color-surface); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); }
+.startmenu__search:focus-within { border-color: var(--color-accent); color: var(--color-text); }
+.startmenu__search input { flex: 1; min-width: 0; border: none; outline: none; background: none; font: var(--text-sm) var(--font-ui); color: var(--color-text); }
+.startmenu__search input::placeholder { color: var(--color-text-dim); opacity: 1; }
+
+.startmenu__body { flex: 1; min-height: 0; overflow-y: auto; padding: 0 var(--space-3) var(--space-3); }
+.startmenu__heading { margin: var(--space-4) 0 var(--space-1); font: 600 var(--text-xs) / 1.2 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-dim); }
+
+.startmenu__grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+.startmenu__tile { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--space-2) 2px; min-height: 68px; font-size: var(--text-xs); line-height: 1.2; text-align: center; color: var(--color-text-dim); border-radius: var(--radius-md); transition: background var(--transition), color var(--transition); }
+.startmenu__tile:hover { background: var(--color-hover); color: var(--color-text); }
+.startmenu__tile span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.startmenu__recent { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; }
+.startmenu__recent-item { display: flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: 0 var(--space-2); font-size: var(--text-sm); text-align: left; border-radius: var(--radius-md); }
+.startmenu__recent-item:hover { background: var(--color-hover); }
+
+.startmenu__footer { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--color-border); background: var(--color-surface-2); }
+.startmenu__user { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.startmenu__avatar { width: 28px; height: 28px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font: 500 var(--text-md) var(--font-display); color: var(--color-on-accent); background: var(--color-accent); border-radius: var(--radius-sm); }
+.startmenu__user-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.startmenu__user-text strong { font-size: var(--text-sm); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.startmenu__user-text small { font-size: var(--text-xs); color: var(--color-text-dim); }
+.startmenu__power { display: flex; gap: 2px; }
+.startmenu__power button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: var(--color-text-dim); border-radius: var(--radius-md); transition: background var(--transition), color var(--transition); }
+.startmenu__power button:hover { background: var(--color-hover); color: var(--color-text); }
+
+[data-mobile="true"] .startmenu { left: var(--space-2); right: var(--space-2); width: auto; }
+[data-mobile="true"] .startmenu__grid { grid-template-columns: repeat(4, 1fr); }
+[data-mobile="true"] .startmenu__tile { min-height: 76px; }
+[data-mobile="true"] .startmenu__power button { width: 44px; height: 44px; }
