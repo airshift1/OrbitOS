@@ -1,0 +1,31 @@
+{
+  "name": "stardance-webos",
+  "version": "1.0.0",
+  "description": "A polished browser-based operating system for the Hack Club Stardance WebOS 1 mission.",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "keywords": [
+    "webos",
+    "operating system",
+    "hackclub",
+    "stardance"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "vite": "^2.0.0"
+  },
+  "devDependencies": {},
+  "homepage": "https://yourhomepage.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/stardance-webos.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/stardance-webos/issues"
+  }
+}
