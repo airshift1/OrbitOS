@@ -1,0 +1,37 @@
+.sandtrix { height: 100%; display: flex; flex-direction: column; gap: 16px; padding: 18px; overflow: auto; background: var(--color-surface); }
+.sandtrix__header, .sandtrix__stats { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sandtrix__eyebrow { color: var(--color-accent-text); font: 10px var(--font-mono); }
+.sandtrix h2 { margin: 3px 0 0; font-size: 23px; }
+.sandtrix__stats { gap: 8px; }
+.sandtrix__stats div { min-width: 68px; display: grid; gap: 3px; padding: 7px 9px; border: 1px solid var(--color-border); border-radius: 5px; background: var(--color-surface-2); }
+.sandtrix__stats span { color: var(--color-text-dim); font-size: 9px; text-transform: uppercase; }
+.sandtrix__stats strong { color: var(--color-text); font: 13px var(--font-mono); }
+.sandtrix__layout { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 18px; }
+.sandtrix__board-wrap { width: min(100%, 440px); aspect-ratio: 1; }
+.sandtrix__board { position: relative; width: 100%; height: 100%; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: repeat(12, minmax(0, 1fr)); gap: 1px; padding: 5px; border: 1px solid var(--color-border-strong); border-radius: 3px; background: #080a0b; outline: none; }
+.sandtrix__board:focus-visible { box-shadow: 0 0 0 2px var(--color-accent); }
+.sandtrix__grain { min-width: 0; min-height: 0; border-radius: 0; background: linear-gradient(135deg, color-mix(in srgb, var(--grain-color) 78%, white), var(--grain-color) 48%, color-mix(in srgb, var(--grain-color) 72%, black)); image-rendering: pixelated; }
+.sandtrix__grain[style*="transparent"] { opacity: 0; }
+.sandtrix__side { width: 122px; display: flex; flex-direction: column; gap: 10px; color: var(--color-text-dim); font-size: 11px; }
+.sandtrix__side h3 { margin: 0; color: var(--color-text); font-size: 13px; }
+.sandtrix__side span { display: flex; align-items: center; gap: 5px; }
+.sandtrix kbd { padding: 2px 5px; border: 1px solid var(--color-border-strong); border-radius: 3px; color: var(--color-text); background: var(--color-surface-2); font: 10px var(--font-mono); }
+.sandtrix__buttons { display: grid; grid-template-columns: repeat(3, 34px); gap: 5px; margin-top: 5px; }
+.sandtrix__buttons button, .sandtrix__restart { min-height: 34px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 5px; color: var(--color-text); background: var(--color-surface-2); }
+.sandtrix__buttons button:nth-child(1) { grid-column: 1; grid-row: 1; }
+.sandtrix__buttons button:nth-child(2) { grid-column: 2; grid-row: 1; }
+.sandtrix__buttons button:nth-child(3) { grid-column: 3; grid-row: 1; }
+.sandtrix__buttons button:nth-child(4) { grid-column: 2; grid-row: 2; }
+.sandtrix__restart { padding: 0 10px; font-size: 11px; }
+.sandtrix__overlay { position: absolute; inset: 6px; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 12px; border-radius: 4px; background: color-mix(in srgb, var(--color-surface) 88%, transparent); text-align: center; }
+.sandtrix__overlay strong { color: var(--color-text); font-size: 20px; }
+.sandtrix__overlay span { max-width: 190px; color: var(--color-text-dim); font-size: 11px; }
+.sandtrix__overlay button { min-height: 35px; padding: 0 12px; border: 0; border-radius: 5px; color: var(--color-on-accent); background: var(--color-accent); }
+
+@media (max-width: 480px) {
+  .sandtrix { padding: 12px; gap: 10px; }
+  .sandtrix__layout { gap: 10px; }
+  .sandtrix__side { width: 95px; font-size: 10px; }
+  .sandtrix__board { gap: 1px; padding: 4px; }
+  .sandtrix__buttons { grid-template-columns: repeat(3, 29px); }
+}

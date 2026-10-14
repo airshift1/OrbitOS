@@ -1,0 +1,330 @@
+import { useState } from "react";
+import { ChevronLeft, ChevronRight, ArrowUp, FolderPlus, FilePlus, Folder, FileText, LayoutGrid, List, Search } from "lucide-react";
+import { getIcon, type IconComponent } from "../../lib/icons";
+import type { AppProps, AppId, ContextMenuItem, FsNode } from "../../types";
+import { useFileSystemStore } from "../../stores/useFileSystemStore";
+import { useSystemStore } from "../../stores/useSystemStore";
+import { appRegistry } from "../registry";
+import { launchApp } from "../../lib/launch";
+import { openFsNode, isImageFile } from "../../lib/openNode";
+import { startNodeDrag, allowNodeDrop, dropNodeInto } from "../../lib/dragDrop";
+import { ContextMenu } from "../../shell/ContextMenu/ContextMenu";
+import { RenameDialog, ConfirmDeleteDialog, MoveDialog } from "../../shell/FileDialogs/FileDialogs";
+import { isProtectedNode, isSystemAppsFolder } from "../../lib/fsGuards";
+import { cx, formatBytes, timeAgo } from "../../lib/helpers";
+import "./FileExplorer.css";
+
+function findDesktopFolderId(nodes: Record<string, import("../../types").FsNode>, rootId: string): string | null {
+  for (const node of Object.values(nodes)) {
+    if (node.parentId === rootId && node.type === "folder" && node.name === "Desktop") {
+      return node.id;
+    }
+  }
+  return null;
+}
+
+export function FileExplorer({ launchProps }: AppProps) {
+  const rootId = useFileSystemStore((s) => s.rootId);
+  const nodes = useFileSystemStore((s) => s.nodes);
+  const getChildren = useFileSystemStore((s) => s.getChildren);
+  const getNode = useFileSystemStore((s) => s.getNode);
+  const getPath = useFileSystemStore((s) => s.getPath);
+  const createNode = useFileSystemStore((s) => s.createNode);
+  const renameNode = useFileSystemStore((s) => s.renameNode);
+  const deleteNode = useFileSystemStore((s) => s.deleteNode);
+  const moveNode = useFileSystemStore((s) => s.moveNode);
+
+  // Opening a folder from the desktop / Spotlight passes its id via launchProps.
+  const [history, setHistory] = useState<string[]>(() => {
+    const wanted = launchProps?.folderId;
+    return typeof wanted === "string" && useFileSystemStore.getState().nodes[wanted] ? [wanted] : [rootId];
+  });
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [query, setQuery] = useState("");
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [renameTarget, setRenameTarget] = useState<FsNode | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<FsNode | null>(null);
+  const [moveTarget, setMoveTarget] = useState<FsNode | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Shared drop-target props for anything that represents a folder.
+  // System Apps is locked: it never becomes a drop target.
+  function dropTargetProps(folderId: string) {
+    if (isSystemAppsFolder(getNode(folderId), rootId)) return {};
+    return {
+      onDragOver: (e: React.DragEvent) => {
+        e.stopPropagation();
+        if (allowNodeDrop(e)) setDragOverId(folderId);
+      },
+      onDragLeave: () => setDragOverId((cur) => (cur === folderId ? null : cur)),
+      onDrop: (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverId(null);
+        dropNodeInto(e, folderId);
+      },
+    };
+  }
+
+  const currentFolderId = history[historyIndex];
+  const allChildren = getChildren(currentFolderId);
+  const children = query.trim()
+    ? allChildren.filter((n) => n.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : allChildren;
+  const currentPath = getPath(currentFolderId);
+  const currentNode = getNode(currentFolderId);
+
+  const topFolders = getChildren(rootId).filter((n) => n.type === "folder");
+
+  function navigateTo(folderId: string) {
+    const next = history.slice(0, historyIndex + 1);
+    next.push(folderId);
+    setHistory(next);
+    setHistoryIndex(next.length - 1);
+  }
+
+  function goBack() {
+    if (historyIndex > 0) setHistoryIndex(historyIndex - 1);
+  }
+
+  function goForward() {
+    if (historyIndex < history.length - 1) setHistoryIndex(historyIndex + 1);
+  }
+
+  function goUp() {
+    if (currentNode && currentNode.parentId) navigateTo(currentNode.parentId);
+  }
+
+  function handleDoubleClick(nodeId: string) {
+    const node = getNode(nodeId);
+    if (!node) return;
+    if (node.type === "folder") {
+      navigateTo(node.id);
+    } else {
+      openFsNode(node);
+    }
+  }
+
+  function handleItemContext(e: React.MouseEvent, nodeId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    const node = getNode(nodeId);
+    if (!node) return;
+
+    // .app files get app-specific context menu
+    if (node.name.endsWith(".app") && node.content && node.content in appRegistry) {
+      const appId = node.content as AppId;
+      const app = appRegistry[appId];
+      const { pinnedApps, pinApp, unpinApp } = useSystemStore.getState();
+      const isPinned = pinnedApps.includes(appId);
+      const items: ContextMenuItem[] = [
+        { label: "Open", icon: app.icon, onClick: () => launchApp(appId) },
+        isPinned
+          ? { label: "Unpin from Taskbar", icon: "PinOff", onClick: () => unpinApp(appId) }
+          : { label: "Add to Taskbar", icon: "Pin", onClick: () => pinApp(appId) },
+      ];
+      setMenu({ x: e.clientX, y: e.clientY, items });
+      return;
+    }
+
+    const items: ContextMenuItem[] = [
+      {
+        label: "Open",
+        icon: node.type === "folder" ? "Folder" : "FileText",
+        onClick: () => handleDoubleClick(nodeId),
+      },
+    ];
+
+    if (!isProtectedNode(node, rootId)) {
+      items.push(
+        { label: "Rename", icon: "Pencil", onClick: () => setRenameTarget(node) },
+        { label: "Move to…", icon: "FolderInput", onClick: () => setMoveTarget(node) },
+      );
+
+      const desktopId = findDesktopFolderId(nodes, rootId);
+      if (desktopId && node.parentId !== desktopId) {
+        items.push({
+          label: "Move to Desktop",
+          icon: "MonitorDown",
+          onClick: () => moveNode(node.id, desktopId),
+        });
+      }
+
+      items.push(
+        { label: "Delete", icon: "Trash2", danger: true, separatorBefore: true, onClick: () => setDeleteTarget(node) },
+      );
+    }
+
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
+  function handleEmptyContext(e: React.MouseEvent) {
+    e.preventDefault();
+    const items: ContextMenuItem[] = [
+      {
+        label: "New Folder",
+        icon: "FolderPlus",
+        onClick: () => createNode(currentFolderId, "New Folder", "folder"),
+      },
+      {
+        label: "New File",
+        icon: "FilePlus",
+        onClick: () => createNode(currentFolderId, "untitled.txt", "file", ""),
+      },
+    ];
+    setMenu({ x: e.clientX, y: e.clientY, items });
+  }
+
+  return (
+    <div className="fx">
+      <div className="fx__toolbar">
+        <button className="fx__btn" disabled={historyIndex <= 0} onClick={goBack}>
+          <ChevronLeft size={16} />
+        </button>
+        <button className="fx__btn" disabled={historyIndex >= history.length - 1} onClick={goForward}>
+          <ChevronRight size={16} />
+        </button>
+        <button className="fx__btn" disabled={!currentNode?.parentId} onClick={goUp}>
+          <ArrowUp size={16} />
+        </button>
+        <div className="fx__path">{currentPath}</div>
+        <label className="fx__search">
+          <Search size={13} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter…" aria-label="Filter this folder" />
+        </label>
+        <div className="fx__views" role="group" aria-label="View">
+          <button type="button" className={cx("fx__btn", view === "grid" && "fx__btn--on")} onClick={() => setView("grid")} aria-pressed={view === "grid"} title="Icons">
+            <LayoutGrid size={15} />
+          </button>
+          <button type="button" className={cx("fx__btn", view === "list" && "fx__btn--on")} onClick={() => setView("list")} aria-pressed={view === "list"} title="List">
+            <List size={15} />
+          </button>
+        </div>
+        <button className="fx__btn" onClick={() => createNode(currentFolderId, "New Folder", "folder")}>
+          <FolderPlus size={16} />
+        </button>
+        <button className="fx__btn" onClick={() => createNode(currentFolderId, "untitled.txt", "file", "")}>
+          <FilePlus size={16} />
+        </button>
+      </div>
+
+      <div className="fx__body">
+        <div className="fx__sidebar">
+          <button
+            className={cx(
+              "fx__side-item",
+              currentFolderId === rootId && "fx__side-item--active",
+              dragOverId === rootId && "fx__side-item--dragover",
+            )}
+            onClick={() => navigateTo(rootId)}
+            {...dropTargetProps(rootId)}
+          >
+            <Folder size={14} /> Root
+          </button>
+          {topFolders.map((f) => (
+            <button
+              key={f.id}
+              className={cx(
+                "fx__side-item",
+                currentFolderId === f.id && "fx__side-item--active",
+                dragOverId === f.id && "fx__side-item--dragover",
+              )}
+              onClick={() => navigateTo(f.id)}
+              {...dropTargetProps(f.id)}
+            >
+              <Folder size={14} /> {f.name}
+            </button>
+          ))}
+        </div>
+
+        <div
+          className={cx("fx__grid", view === "list" && "fx__grid--list", dragOverId === currentFolderId && "fx__grid--dragover")}
+          onContextMenu={handleEmptyContext}
+          {...dropTargetProps(currentFolderId)}
+        >
+          {children.length === 0 && (
+            <div className="fx__empty">{query ? `Nothing matches “${query}”` : "This folder is empty"}</div>
+          )}
+          {view === "list" && children.length > 0 && (
+            <div className="fx__listhead" aria-hidden="true">
+              <span>Name</span>
+              <span>Kind</span>
+              <span>Modified</span>
+              <span>Size</span>
+            </div>
+          )}
+          {children.map((node) => {
+            let NodeIcon: IconComponent = node.type === "folder" ? Folder : FileText;
+            let kind = node.type === "folder" ? "Folder" : "File";
+            let displayName = node.name;
+
+            if (node.name.endsWith(".app") && node.content && node.content in appRegistry) {
+              const appDef = appRegistry[node.content as AppId];
+              NodeIcon = getIcon(appDef.icon, FileText);
+              displayName = node.name.replace(/\.app$/, "");
+              kind = "Application";
+            } else if (isImageFile(node.name)) {
+              NodeIcon = getIcon("Image");
+              kind = "Image";
+            }
+
+            const isFolder = node.type === "folder";
+            return (
+              <button
+                key={node.id}
+                className={cx("fx__item", dragOverId === node.id && "fx__item--dragover")}
+                onDoubleClick={() => handleDoubleClick(node.id)}
+                onContextMenu={(e) => handleItemContext(e, node.id)}
+                draggable={!isProtectedNode(node, rootId) && !isSystemAppsFolder(currentNode, rootId)}
+                onDragStart={(e) => startNodeDrag(e, node.id)}
+                {...(isFolder ? dropTargetProps(node.id) : {})}
+              >
+                <NodeIcon size={view === "list" ? 18 : 28} />
+                <span className="fx__name">{displayName}</span>
+                <span className="fx__meta">{kind}</span>
+                <span className="fx__meta">{timeAgo(node.updatedAt)}</span>
+                <span className="fx__meta">{node.type === "file" ? formatBytes(node.content?.length ?? 0) : "—"}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="fx__status">
+        {children.length} item{children.length === 1 ? "" : "s"}
+        {query && ` (filtered from ${allChildren.length})`}
+      </div>
+
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          items={menu.items}
+          onClose={() => setMenu(null)}
+        />
+      )}
+      {renameTarget && (
+        <RenameDialog
+          node={renameTarget}
+          onRename={(name) => { renameNode(renameTarget.id, name); setRenameTarget(null); }}
+          onCancel={() => setRenameTarget(null)}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDeleteDialog
+          node={deleteTarget}
+          onConfirm={() => { deleteNode(deleteTarget.id); setDeleteTarget(null); }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+      {moveTarget && (
+        <MoveDialog
+          node={moveTarget}
+          onMove={(destId) => { moveNode(moveTarget.id, destId); setMoveTarget(null); }}
+          onCancel={() => setMoveTarget(null)}
+        />
+      )}
+    </div>
+  );
+}

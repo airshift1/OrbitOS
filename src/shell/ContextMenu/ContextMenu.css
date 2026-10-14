@@ -1,0 +1,33 @@
+.ctx-overlay { position: fixed; inset: 0; z-index: var(--z-overlay); }
+
+.ctx-menu {
+  position: absolute;
+  min-width: 200px;
+  padding: var(--space-1);
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  animation: ctx-in var(--duration-fast) var(--ease);
+}
+
+@keyframes ctx-in { from { opacity: 0; } to { opacity: 1; } }
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  text-align: left;
+  border-radius: var(--radius-sm);
+}
+.ctx-item:hover,
+.ctx-item:focus-visible { background: var(--color-hover); outline: none; box-shadow: inset 2px 0 var(--color-accent); }
+.ctx-item--danger { color: var(--color-danger); }
+.ctx-sep { height: 1px; margin: var(--space-1) var(--space-2); background: var(--color-border); }
+
+@media (pointer: coarse) { .ctx-item { min-height: 40px; } }

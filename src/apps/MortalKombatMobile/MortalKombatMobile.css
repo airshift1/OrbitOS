@@ -1,0 +1,7 @@
+.mortal-mobile { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 22px; color: var(--color-text); background: radial-gradient(ellipse at 50% 20%, var(--color-accent-soft), transparent 55%), var(--color-surface); text-align: center; }
+.mortal-mobile__mark { width: 58px; height: 58px; display: grid; place-items: center; border: 1px solid var(--color-border-strong); border-radius: 12px; color: var(--color-accent-text); background: var(--color-surface-2); }
+.mortal-mobile__eyebrow { color: var(--color-accent-text); font: 10px var(--font-mono); }
+.mortal-mobile h2 { max-width: 100%; margin: 0; font-size: 21px; overflow-wrap: anywhere; }
+.mortal-mobile p { max-width: 300px; margin: 0; color: var(--color-text-dim); font-size: 12px; }
+.mortal-mobile__open { min-height: 38px; display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; padding: 0 14px; border: 0; border-radius: 5px; color: var(--color-on-accent); background: var(--color-accent); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.mortal-mobile__status { min-height: 16px; color: var(--color-text-dim); font-size: 10px; }

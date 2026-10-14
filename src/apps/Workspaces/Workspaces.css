@@ -1,0 +1,40 @@
+.wsapp { display: flex; flex-direction: column; height: 100%; background: var(--color-surface); }
+.wsapp__bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+}
+.wsapp__add { display: flex; align-items: center; gap: 5px; min-width: 0; flex: 1; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); padding-right: 28px; }
+.wsapp__add::-webkit-scrollbar { display: none; }
+.wsapp__actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+.wsapp__stage { position: relative; flex: 1; min-height: 0; overflow: hidden; background: var(--color-bg); }
+.wsapp__inner { position: absolute; inset: 8px; }
+
+/* Hosted apps fill their panel. */
+.wsapp-panel { container-type: inline-size; position: relative; width: 100%; height: 100%; overflow: auto; background: var(--color-surface); color: var(--color-text); }
+.wsapp-panel > * { min-height: 100%; }
+.wsapp-missing { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12.5px; color: var(--color-text-dim); }
+
+.wsapp__add .eyebrow { flex-shrink: 0; margin-right: var(--space-1); }
+.wsapp__add .btn { flex-shrink: 0; }
+
+/* ---- Workspace chrome (rendered by AppPanelRenderer) ---- */
+.wsapp-title { display: flex; align-items: center; gap: var(--space-2); min-width: 100px; min-height: 30px; padding: 0 var(--space-1) 0 var(--space-3); font-size: var(--text-sm); font-weight: 500; color: var(--color-text); background: var(--color-titlebar); border-bottom: 1px solid var(--color-border); user-select: none; }
+.wsapp-title__text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wsapp-title button { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--color-text-dim); border-radius: var(--radius-sm); }
+.wsapp-title button:hover { color: var(--color-text); background: var(--color-hover); }
+
+.wsapp-tab { min-width: 100px; padding: 6px var(--space-3); font-size: var(--text-sm); color: var(--color-text-dim); background: var(--color-surface-2); border-right: 1px solid var(--color-border); border-bottom: 2px solid transparent; user-select: none; transition: background var(--transition), color var(--transition); }
+.wsapp-tab:hover { color: var(--color-text); background: var(--color-hover); }
+.wsapp-tab[data-selected] { color: var(--color-text); background: var(--color-surface); border-bottom-color: var(--color-accent); }
+
+.wsapp-tray { display: flex; align-items: center; justify-content: center; width: 45px; height: 45px; color: var(--color-text-dim); background: var(--color-titlebar); border-bottom: 1px solid var(--color-border); transition: background var(--transition), color var(--transition); }
+.wsapp-tray[data-small] { width: 30px; height: 30px; }
+.wsapp-tray:hover { color: var(--color-text); }
+.wsapp-tray[data-selected] { color: var(--color-on-accent); background: var(--color-accent); }

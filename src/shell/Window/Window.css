@@ -1,0 +1,202 @@
+/* ---------------------------------------------------------------
+   Window frame. Structure is shared by every window style; the
+   "orbit" and "classic" looks are defined here, and traffic / linux /
+   yk2000 / aero live in styles/window-styles.css (ported from core-main).
+   --------------------------------------------------------------- */
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  outline: none;
+  animation: window-open var(--duration) var(--ease);
+}
+
+.window.focused { border-color: var(--color-border-strong); }
+.window.focused .window-header { box-shadow: inset 0 2px 0 var(--color-accent); }
+
+.window--maximized {
+  border-radius: 0;
+}
+
+.window--dragging {
+  transition: none;
+  will-change: left, top, width, height;
+}
+
+.window--closing {
+  animation: window-close 0.15s ease-in forwards;
+  pointer-events: none;
+}
+
+.window-header {
+  flex: 0 0 auto;
+  height: var(--titlebar-height);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: var(--color-titlebar);
+  border-bottom: 1px solid var(--color-border);
+  cursor: default;
+  user-select: none;
+  touch-action: none;
+}
+
+.window-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-dim);
+}
+
+.window.focused .window-title {
+  color: var(--color-text);
+}
+
+.window__icon {
+  flex-shrink: 0;
+  color: var(--color-accent-text);
+}
+
+.brand-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.terminal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.terminal-btn:disabled {
+  cursor: default;
+}
+
+.window__body {
+  /* apps size themselves with @container queries against their window, not the viewport */
+  container-type: inline-size;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: auto;
+  background: var(--color-surface);
+}
+
+/* ---- Resize handles ---- */
+.window__resize {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+.window__resize--n { top: 0; left: 8px; right: 8px; height: 5px; cursor: n-resize; }
+.window__resize--s { bottom: 0; left: 8px; right: 8px; height: 5px; cursor: s-resize; }
+.window__resize--e { right: 0; top: 8px; bottom: 8px; width: 5px; cursor: e-resize; }
+.window__resize--w { left: 0; top: 8px; bottom: 8px; width: 5px; cursor: w-resize; }
+.window__resize--ne { top: 0; right: 0; width: 10px; height: 10px; cursor: ne-resize; }
+.window__resize--nw { top: 0; left: 0; width: 10px; height: 10px; cursor: nw-resize; }
+.window__resize--se { bottom: 0; right: 0; width: 10px; height: 10px; cursor: se-resize; }
+.window__resize--sw { bottom: 0; left: 0; width: 10px; height: 10px; cursor: sw-resize; }
+
+/* ---- Snap preview ---- */
+.snap-overlay {
+  position: fixed;
+  z-index: calc(var(--z-windows) - 1);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-soft);
+  border: 2px solid var(--color-accent-line);
+  pointer-events: none;
+  transition: left var(--duration-fast) var(--ease), top var(--duration-fast) var(--ease), width var(--duration-fast) var(--ease), height var(--duration-fast) var(--ease);
+  animation: os-fade-in var(--duration-fast) var(--ease);
+}
+
+/* ================= Style: orbit (default) =================
+   Round traffic dots on the left, centred title. */
+[data-system-style="orbit"] .window-header {
+  flex-direction: row-reverse;
+  padding: 0 12px;
+  gap: 10px;
+}
+[data-system-style="orbit"] .window-title {
+  justify-content: center;
+  padding-right: 54px;
+}
+[data-system-style="orbit"] .window__icon { display: none; }
+[data-system-style="orbit"] .window-controls { gap: 7px; }
+[data-system-style="orbit"] .terminal-btn {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  color: rgba(0, 0, 0, 0.7);
+  transition: filter var(--transition), transform var(--transition);
+}
+[data-system-style="orbit"] .terminal-btn svg { width: 8px; height: 8px; opacity: 0; stroke-width: 3; }
+[data-system-style="orbit"] .window-controls:hover .terminal-btn svg { opacity: 1; }
+[data-system-style="orbit"] .terminal-btn:hover:not(:disabled) { filter: brightness(1.15); transform: scale(1.08); }
+[data-system-style="orbit"] .terminal-btn[data-action="close"] { background: #f04868; order: 1; }
+[data-system-style="orbit"] .terminal-btn[data-action="minimize"] { background: #f0a030; order: 2; }
+[data-system-style="orbit"] .terminal-btn[data-action="maximize"] { background: #20d4a0; order: 3; }
+[data-system-style="orbit"] .terminal-btn:disabled { background: var(--color-surface-2); }
+
+/* ================= Style: classic =================
+   Title on the left, rectangular buttons on the right (original WebOS look). */
+[data-system-style="classic"] .terminal-btn {
+  width: 30px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-dim);
+  transition: background var(--transition), color var(--transition);
+}
+[data-system-style="classic"] .terminal-btn:hover:not(:disabled) {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+[data-system-style="classic"] .terminal-btn[data-action="close"]:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #fff;
+}
+[data-system-style="classic"] .terminal-btn:disabled { opacity: 0.35; }
+
+/* ================= Mobile: one full-screen window at a time ================= */
+[data-mobile="true"] .window {
+  position: fixed;
+  inset: 0 0 var(--taskbar-height) 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  border-width: 0;
+}
+[data-mobile="true"] .window-header { cursor: default; }
+[data-mobile="true"] .terminal-btn[data-action="maximize"] { display: none; }
+
+@keyframes window-open {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes window-close {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

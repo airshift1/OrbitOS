@@ -1,0 +1,135 @@
+/* ------------------------------------------------------------------
+   Design tokens — the only place colours, type and radii are defined.
+
+   Two primary tones (ink + paper) and one accent (signal orange).
+   Themes swap which tone is the ground; the accent stays the same hue.
+     orbit    "Ink"       warm dark (default)
+     light    "Paper"     warm light
+     dark     "Graphite"  cool dark
+     midnight "Black"     pure black, for OLED
+   (theme ids are kept as-is so saved settings keep working)
+   ------------------------------------------------------------------ */
+:root,
+:root[data-theme="orbit"] {
+  --color-bg: #12110e;
+  --color-surface: #191813;
+  --color-surface-2: #211f19;
+  --color-surface-hover: #2a2820;
+  --color-titlebar: #1d1b16;
+  --color-text: #eae6dc;
+  --color-text-dim: #a8a396;
+  --color-accent: #e0653a;
+  --color-on-accent: #16110d;
+  --color-danger: #ee7a68;
+  --color-success: #86b98f;
+  --color-warning: #d9a441;
+  --color-border: rgba(234, 230, 220, 0.16);
+  --color-border-strong: rgba(234, 230, 220, 0.34);
+  --color-hover: rgba(234, 230, 220, 0.07);
+  --color-taskbar: #14130f;
+  --color-panel: #191813;
+  --color-scrim: rgba(10, 9, 7, 0.6);
+
+  /* Space, 4px base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Square-ish corners: an edge, not a pill */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  --shadow-window: 0 1px 0 rgba(0, 0, 0, 0.5), 0 14px 32px rgba(0, 0, 0, 0.38);
+  --shadow-panel: 0 1px 0 rgba(0, 0, 0, 0.5), 0 10px 24px rgba(0, 0, 0, 0.4);
+
+  --taskbar-height: 44px;
+  --titlebar-height: 32px;
+  --target-min: 36px;
+
+  --z-desktop: 0;
+  --z-windows: 100;
+  --z-taskbar: 9000;
+  --z-menu: 9500;
+  --z-toast: 9700;
+  --z-overlay: 9999;
+
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-md: 14px;
+  --text-lg: 18px;
+  --text-xl: 28px;
+
+  --duration-fast: 100ms;
+  --duration: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --transition: var(--duration) var(--ease);
+
+  --color-accent-text: var(--color-accent);
+  --color-accent-2: var(--color-accent);
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --color-accent-line: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #111315;
+  --color-surface: #181b1e;
+  --color-surface-2: #1f2327;
+  --color-surface-hover: #292e33;
+  --color-titlebar: #1c2024;
+  --color-text: #e6e8ea;
+  --color-text-dim: #a0a7ae;
+  --color-border: rgba(230, 232, 234, 0.16);
+  --color-border-strong: rgba(230, 232, 234, 0.34);
+  --color-hover: rgba(230, 232, 234, 0.07);
+  --color-taskbar: #131518;
+  --color-panel: #181b1e;
+}
+
+:root[data-theme="midnight"] {
+  --color-bg: #000000;
+  --color-surface: #0a0a0a;
+  --color-surface-2: #121212;
+  --color-surface-hover: #1c1c1c;
+  --color-titlebar: #0e0e0e;
+  --color-text: #eeeeee;
+  --color-text-dim: #a4a4a4;
+  --color-border: rgba(255, 255, 255, 0.18);
+  --color-border-strong: rgba(255, 255, 255, 0.36);
+  --color-hover: rgba(255, 255, 255, 0.08);
+  --color-taskbar: #050505;
+  --color-panel: #0a0a0a;
+}
+
+:root[data-theme="light"] {
+  --color-bg: #e2dccd;
+  --color-surface: #f7f3e9;
+  --color-surface-2: #eee9db;
+  --color-surface-hover: #e5dfce;
+  --color-titlebar: #ebe5d6;
+  --color-text: #1b1a16;
+  --color-text-dim: #57544a;
+  --color-accent: #b5390f;
+  --color-on-accent: #fffaf2;
+  --color-danger: #b3321f;
+  --color-success: #2f6b3f;
+  --color-warning: #8a5a00;
+  --color-border: rgba(27, 26, 22, 0.2);
+  --color-border-strong: rgba(27, 26, 22, 0.45);
+  --color-hover: rgba(27, 26, 22, 0.06);
+  --color-taskbar: #ebe5d6;
+  --color-panel: #f7f3e9;
+  --color-scrim: rgba(226, 220, 205, 0.7);
+  --shadow-window: 0 1px 0 rgba(27, 26, 22, 0.12), 0 14px 32px rgba(27, 26, 22, 0.2);
+  --shadow-panel: 0 1px 0 rgba(27, 26, 22, 0.12), 0 10px 24px rgba(27, 26, 22, 0.2);
+  color-scheme: light;
+}
