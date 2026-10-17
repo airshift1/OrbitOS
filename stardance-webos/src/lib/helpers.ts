@@ -7,11 +7,11 @@ export function uid(): string {
   return crypto.randomUUID();
 }
 
-export function formatClock(date: Date): { time: string; dateStr: string } {
+export function formatClock(date: Date, use24Hour = false): { time: string; dateStr: string } {
   const time = date.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
+    hour12: !use24Hour,
   });
   const dateStr = date.toLocaleDateString("en-US", {
     weekday: "short",
@@ -43,12 +43,12 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Every localStorage key this OS owns starts with this prefix. */
+/** OrbitOS owns these prefixes; account records remain separate from user data. */
 export const STORAGE_PREFIX = "webos-";
 
 export function clearAllOsStorage() {
   Object.keys(localStorage)
-    .filter((k) => k.startsWith(STORAGE_PREFIX))
+    .filter((k) => k.startsWith(STORAGE_PREFIX) || k.startsWith("orbitos-web:") || k.startsWith("orbitos-desktop:") || k === "orbitos-session")
     .forEach((k) => localStorage.removeItem(k));
 }
 

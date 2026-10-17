@@ -31,6 +31,7 @@ export function useAppearance() {
   const theme = useSystemStore((s) => s.theme);
   const accent = useSystemStore((s) => s.accentColor);
   const overrides = useSystemStore((s) => s.themeOverrides);
+  const customization = useSystemStore((s) => s.customization);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -62,6 +63,30 @@ export function useAppearance() {
   useEffect(() => {
     document.documentElement.dataset.mobile = isMobile ? "true" : "false";
   }, [isMobile]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.iconStyle = customization.iconStyle;
+    root.dataset.density = customization.density;
+    root.dataset.windowAnimations = String(customization.windowAnimations);
+    root.style.setProperty("--window-radius", `${customization.windowRadius}px`);
+    root.style.setProperty("--window-shadow", customization.windowShadow ? "var(--shadow-window)" : "none");
+    root.style.setProperty("--window-border", customization.windowBorder ? "1px solid var(--color-border)" : "1px solid transparent");
+    root.style.setProperty("--window-animation", customization.windowAnimations && !customization.reduceMotion ? "window-open var(--duration) var(--ease)" : "none");
+    root.style.setProperty("--panel-opacity", `${100 - customization.transparency}%`);
+    root.style.setProperty("--panel-blur", `${customization.blur}px`);
+    root.style.setProperty("--desktop-scale", `${customization.desktopScale / 100}`);
+  }, [customization]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => {
+      document.documentElement.dataset.reduceMotion = String(customization.reduceMotion || media.matches);
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [customization.reduceMotion]);
 
   return { isMobile };
 }

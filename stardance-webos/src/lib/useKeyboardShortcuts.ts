@@ -15,7 +15,8 @@ import { WORKSPACE_COUNT } from "./workspaces";
  *   Escape                       close the Start menu / open menus
  *
  * Per-window keys (arrows to move, Shift+arrows to resize, Ctrl+W to close)
- * live on <Window> so they only fire when that window has focus.
+ * live on <Window> so they only fire when that window has focus. there will be more shortcuts added in the future. but right now these are the
+ * only ones implemented are listed above. pls give me feed back on what u think i should add or bugs that need fixed.
  */
 export function useKeyboardShortcuts(): void {
   useEffect(() => {

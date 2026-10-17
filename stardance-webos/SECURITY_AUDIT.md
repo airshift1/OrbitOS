@@ -1,4 +1,20 @@
-# Security audit — OrbitOS (Stardance WebOS)
+# Security Audit — OrbitOS
+
+## Executive Summary
+
+The current OrbitOS checkout was reviewed as a static React/TypeScript/Vite SPA. The audit covered the actual
+source, deployment configuration, browser sinks, local persistence, browser-local authentication, Git history
+signature scans, dependency audit, tests, and production build. No confirmed secret values, `.env` files, backend
+services, databases, WebSockets, Electron/native components, or server-side URL fetchers were found.
+
+The most important residual risk is architectural: browser-local accounts and `localStorage` are not enforceable
+authorization boundaries. OrbitOS must add a server/database auth adapter before account data can be treated as
+private across people, browsers, or devices. This report does not claim that OrbitOS is fully secure or production-ready.
+
+The deployment boundary is explicit: web-only account/session code lives under `src/web/auth` and the web root;
+shared shell code uses a platform-neutral identity context; desktop uses `src/desktop/main.tsx` and a local identity
+profile. `npm run build:desktop` emits `dist-desktop`, and the desktop bundle contains no web authentication markers.
+An Electron main/preload wrapper is not included yet.
 
 Scope: the whole repository as of this commit. Method: manual review of every file that handles external input,
 `grep` for injection sinks and secrets, a scan of the production build, `npm audit`, unit tests, and attack
@@ -6,10 +22,12 @@ attempts against the built app in headless Chromium.
 
 ## What this app is (and what that rules out)
 
-A static single-page app. It has **no server, database, accounts, cookies or network calls of its own**. Everything
-the user creates lives in `localStorage` in their own browser. So these categories do not apply and nothing was
-"fixed" for them: authentication, authorization, IDOR, CSRF, SQL/command injection, server-side path traversal,
-CORS, cookie flags, server error pages.
+A web static single-page app with a browser-local account and guest-session layer plus a separate desktop renderer
+target. It has no server or database, so
+account records and user data remain in the current browser's storage. Passwords are never stored; local account
+verifiers use salted PBKDF2. This is suitable for a shared browser demo, not for production cross-device identity.
+Production deployment still needs a server auth adapter with HttpOnly/SameSite cookies, server-side authorization,
+rate limiting, and a database.
 
 ## Findings
 
@@ -26,13 +44,18 @@ CORS, cookie flags, server error pages.
 | 9 | Error boundary rendered the raw `error.message` | Low | `AppErrorBoundary.tsx` | Generic message; details go to the console only. | Code review. |
 | 10 | Fonts loaded from Google Fonts (third-party request, extra CSP allowance) | Info | `index.html`, `styles/fonts.css` | Self-hosted via `@fontsource*`. | 0 external requests in the browser run. |
 | 11 | Right-click inside a window or on the taskbar also opened the desktop context menu (two stacked menus) | Bug (found while testing keyboard access) | `Desktop.tsx` | Desktop menu ignores events from windows, taskbar and open menus. | Browser test. |
+| 12 | No user/session boundary existed; persisted stores used global keys | Medium | `lib/userScope.ts`, `stores/useAuthStore.ts`, persisted stores | Added guest and local account entry, salted PBKDF2 verifiers, generic auth errors, failed-attempt cooldown, and user-scoped persistence. | Build and unit suite; production server adapter remains required for real multi-device auth. |
+| 13 | Browser sessions had no expiry | Medium | `src/lib/userScope.ts`, `src/stores/useAuthStore.ts` | Sessions now require a finite issue time and expire after 12 hours. | `src/tests/userScope.test.ts`, 73 passing tests, production build. |
+| 14 | Persisted account records and password input were weakly bounded | Low | `src/stores/useAuthStore.ts`, `src/shell/AuthScreen.tsx` | Validate account IDs, names, salts, verifiers; cap passwords at 128 characters. | 73 passing tests and production build. |
+| 15 | Local account creation disclosed duplicate display names | Low | `src/stores/useAuthStore.ts` | Return a generic account-creation error. | Source review and production build. |
+| 16 | Filesystem integrity depended on UI-only guards | Medium | `src/stores/useFileSystemStore.ts` | Enforce protected-node checks, valid folder destinations, cycle prevention, content limits, cycle-safe traversal, and persisted-state sanitization in the store. | Filesystem regression tests; 75 tests and production build pass. |
 
 ### Checked, no issue found
 - Secrets/tokens/keys: none in source; none matched in `dist/`; no source maps shipped.
 - `eval`, `new Function`, `dangerouslySetInnerHTML`, `innerHTML`, `document.write`: none in app code. The calculator is a hand-written parser (tests confirm code-like input returns no result).
 - User text (notes, file contents, username, terminal output) is rendered through React text nodes. A username of `<img src=x onerror=alert(1)>` was stored and displayed as text; nothing executed.
 - Session restore (`lib/session.ts`) and Workspaces layout restore validate app ids and geometry and are wrapped in `try/catch`.
-- `npm audit`: 0 vulnerabilities. Outdated: `@types/node` and `typescript` (major versions only). No dependency was upgraded.
+- `npm audit --audit-level=moderate`: 0 vulnerabilities. No dependency was upgraded during this audit.
 - Dependencies added: `@fontsource-variable/newsreader`, `@fontsource/ibm-plex-sans`, `@fontsource/ibm-plex-mono` (fonts), `vitest` (dev). `@emotion/*` and `@fortawesome/*` are required by `react-workspaces`.
 
 ## Remaining risks / limitations
@@ -41,7 +64,33 @@ CORS, cookie flags, server error pages.
 - **The Browser app frames arbitrary https sites** (that is its purpose). They are sandboxed and get no permissions, but they are third-party content. Text that isn't a URL is sent to Wikipedia search.
 - **`localStorage` is not a security boundary.** Anything with script access to this origin can read/edit the user's data; the fixes above make the app robust to that, not immune.
 - **Rejected file names give no on-screen explanation** (the operation is refused silently).
-- Placeholder profile links (`github.com/yourname`, …) are demo defaults in `useProfileStore.ts`.
+- Browser-local authentication is not a server security boundary. Users can inspect or clear their own storage, and accounts do not sync between browsers or devices.
+- Sessions are local and expire after 12 hours, but there is no server revocation, idle timeout, device/session management, or cross-device sign-out.
+- The legacy `useProfileStore` remains as a user-scoped compatibility store; the public app is now `About OrbitOS`, while `Profile` owns the active user's display preferences.
+
+## Dependency Findings
+
+`npm audit --audit-level=moderate` reported zero vulnerabilities. The dependency tree includes the ProjectStorm
+workspace packages, React, Zustand, Lucide, Font Awesome, Emotion, Vite, TypeScript, Vitest, and Oxlint. No major
+upgrade was attempted because no vulnerable dependency required remediation.
+
+## Secrets
+
+No `.env` files or confirmed API keys, access tokens, passwords, JWT secrets, database URLs, private keys, OAuth
+secrets, cloud credentials, or webhook secrets were found in the current source/configuration tree. Git history
+signature scans found no private-key markers or common GitHub/live-token prefixes. Values were not printed.
+
+## Production Checklist
+
+- Add a server-side identity/database layer before treating accounts as private.
+- Store only password hashes/verifiers server-side; use a memory-hard password KDF where supported.
+- Use Secure, HttpOnly, SameSite cookies, session rotation, expiry, revocation, CSRF protection, and rate limits.
+- Configure HTTPS, DNS, exact production origins, and deployment headers on the actual host.
+- Review CSP `frame-src https:` against the intended Mini Browser policy.
+- Add server-side ownership checks for every user resource and database backup/restore controls.
+- Keep secrets in the deployment secret manager; rotate any credential if a future scan confirms exposure.
+- Add monitoring that excludes passwords, tokens, session identifiers, and private user content.
+- Perform browser/device isolation tests against the real deployment, since localStorage behavior cannot establish server authorization.
 
 ## Reproducing
 ```bash

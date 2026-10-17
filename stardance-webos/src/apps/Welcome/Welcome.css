@@ -30,7 +30,7 @@
   transition: background var(--transition);
 }
 .welcome__row:hover { background: var(--color-hover); }
-.welcome__num { font: var(--text-sm) var(--font-mono); color: var(--color-accent-text); }
+.welcome__num { font: var(--text-sm) var(--font-mono); color: var(--color-accent-cool); }
 .welcome__row-text { display: grid; gap: 2px; }
 .welcome__row-text strong { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 500; }
 .welcome__row-text span { font-size: var(--text-sm); color: var(--color-text-dim); line-height: 1.45; }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { cleanNodeName, isProtectedNode } from "../lib/fsGuards";
+import { cleanNodeName, isProtectedNode, isSelfOrDescendant, isSystemAppsFolder } from "../lib/fsGuards";
+import { scopedStorageKey } from "../platform/storageScope";
 import type { FsNode, NodeType } from "../types";
 
 interface FsState {
@@ -16,6 +17,8 @@ interface FsState {
   getPath: (id: string) => string;
   resetFileSystem: () => void;
 }
+
+export const MAX_NODE_CONTENT = 4_000_000;
 
 function makeNode(
   name: string,
@@ -35,6 +38,51 @@ function makeNode(
   };
 }
 
+function safeContent(content: unknown): string | undefined {
+  return typeof content === "string" && content.length <= MAX_NODE_CONTENT ? content : undefined;
+}
+
+function safeStoredName(name: unknown): name is string {
+  return typeof name === "string" && name.length > 0 && name.length <= 120 && name !== "." && name !== ".." && !/[\\/\u0000-\u001f\u007f]/.test(name);
+}
+
+export function sanitizePersistedFilesystem(raw: unknown): { nodes: Record<string, FsNode>; rootId: string } {
+  const fallback = buildSeed();
+  if (!raw || typeof raw !== "object") return fallback;
+  const input = raw as { nodes?: unknown; rootId?: unknown };
+  if (!input.nodes || typeof input.nodes !== "object" || typeof input.rootId !== "string") return fallback;
+  const nodes: Record<string, FsNode> = {};
+  for (const [id, value] of Object.entries(input.nodes as Record<string, unknown>)) {
+    if (!/^[a-z0-9-]{1,100}$/i.test(id) || !value || typeof value !== "object") continue;
+    const node = value as Partial<FsNode>;
+    if (node.id !== id || !safeStoredName(node.name) || (node.type !== "file" && node.type !== "folder")) continue;
+    if (node.parentId !== null && typeof node.parentId !== "string") continue;
+    if (typeof node.createdAt !== "number" || !Number.isFinite(node.createdAt) || typeof node.updatedAt !== "number" || !Number.isFinite(node.updatedAt)) continue;
+    if (node.content !== undefined && safeContent(node.content) === undefined) continue;
+    nodes[id] = {
+      id,
+      name: node.name,
+      type: node.type,
+      parentId: node.parentId,
+      content: safeContent(node.content),
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+    };
+  }
+  const root = nodes[input.rootId];
+  if (!root || root.type !== "folder" || root.parentId !== null) return fallback;
+  for (const node of Object.values(nodes)) {
+    const seen = new Set<string>();
+    let current: FsNode | undefined = node;
+    while (current && current.id !== input.rootId) {
+      if (seen.has(current.id) || !current.parentId || !nodes[current.parentId]) return fallback;
+      seen.add(current.id);
+      current = nodes[current.parentId];
+    }
+  }
+  return { nodes, rootId: input.rootId };
+}
+
 const SYSTEM_APP_FILES: [string, string][] = [
   ["File Explorer.app", "file-explorer"],
   ["Text Editor.app", "text-editor"],
@@ -42,10 +90,18 @@ const SYSTEM_APP_FILES: [string, string][] = [
   ["Calculator.app", "calculator"],
   ["Settings.app", "settings"],
   ["Browser.app", "browser"],
-  ["About Me.app", "about-me"],
+  ["About OrbitOS.app", "about-orbitos"],
+  ["Profile.app", "profile"],
   ["Paint.app", "paint"],
   ["Clock.app", "clock"],
   ["System Monitor.app", "task-manager"],
+  ["Snake.app", "snake"],
+  ["Orbit Blast.app", "orbit-blast"],
+  ["Dino Run.app", "dino-run"],
+  ["2048.app", "2048"],
+  ["Sandtrix.app", "sandtrix"],
+  ["Orbit Depths.app", "orbit-depths"],
+  ["Mortal Kombat Mobile.app", "mortal-kombat-mobile"],
   ["Welcome.app", "welcome"],
   ["Notes.app", "notes"],
   ["App Launcher.app", "launcher"],
@@ -59,11 +115,11 @@ function buildSeed(): { nodes: Record<string, FsNode>; rootId: string } {
   const documents = makeNode("Documents", "folder", root.id);
   const pictures = makeNode("Pictures", "folder", root.id);
   const systemApps = makeNode("System Apps", "folder", root.id);
-  const aboutMe = makeNode(
-    "About Me.txt",
+  const aboutOrbit = makeNode(
+    "About OrbitOS.txt",
     "file",
     root.id,
-    "Hi! I'm [Your Name].\n\nWelcome to my interactive portfolio OS.\nOpen the apps, explore the files, and check out my projects.\n\n- Email: you@example.com\n- GitHub: github.com/yourname",
+    "OrbitOS is a public browser-based operating system experience.\n\nExplore the built-in apps, use Guest mode, and keep personal data in your own session.",
   );
   const readme = makeNode(
     "readme.txt",
@@ -84,7 +140,7 @@ function buildSeed(): { nodes: Record<string, FsNode>; rootId: string } {
   );
 
   const all = [
-    root, desktop, documents, pictures, systemApps, aboutMe, readme, todo,
+    root, desktop, documents, pictures, systemApps, aboutOrbit, readme, todo,
     ...appFiles,
   ];
   const nodes: Record<string, FsNode> = {};
@@ -103,8 +159,11 @@ function hasSiblingName(nodes: Record<string, FsNode>, parentId: string, name: s
 function collectDescendants(nodes: Record<string, FsNode>, id: string): string[] {
   const ids: string[] = [];
   const queue = [id];
+  const seen = new Set<string>();
   while (queue.length > 0) {
     const current = queue.pop()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
     ids.push(current);
     for (const node of Object.values(nodes)) {
       if (node.parentId === current) {
@@ -135,9 +194,11 @@ export const useFileSystemStore = create<FsState>()(
       createNode: (parentId: string, rawName: string, type: NodeType, content?: string) => {
         const { nodes } = get();
         const name = cleanNodeName(rawName);
-        if (!name || !nodes[parentId] || nodes[parentId].type !== "folder") return "";
+        if (!name || (type !== "file" && type !== "folder") || !nodes[parentId] || nodes[parentId].type !== "folder") return "";
+        if (isSystemAppsFolder(nodes[parentId], get().rootId)) return "";
+        if (typeof content === "string" && safeContent(content) === undefined) return "";
         if (hasSiblingName(nodes, parentId, name)) return "";
-        const node = makeNode(name, type, parentId, content);
+        const node = makeNode(name, type, parentId, safeContent(content));
         set((state) => ({
           nodes: { ...state.nodes, [node.id]: node },
         }));
@@ -162,7 +223,7 @@ export const useFileSystemStore = create<FsState>()(
 
       deleteNode: (id: string) => {
         set((state) => {
-          if (id === state.rootId) return state;
+          if (id === state.rootId || isProtectedNode(state.nodes[id], state.rootId)) return state;
           const idsToRemove = collectDescendants(state.nodes, id);
           const next = { ...state.nodes };
           for (const removeId of idsToRemove) {
@@ -175,7 +236,7 @@ export const useFileSystemStore = create<FsState>()(
       updateContent: (id: string, content: string) => {
         set((state) => {
           const existing = state.nodes[id];
-          if (!existing) return state;
+          if (!existing || existing.type !== "file" || isProtectedNode(existing, state.rootId) || safeContent(content) === undefined) return state;
           return {
             nodes: {
               ...state.nodes,
@@ -188,7 +249,10 @@ export const useFileSystemStore = create<FsState>()(
       moveNode: (id: string, newParentId: string) => {
         set((state) => {
           const existing = state.nodes[id];
-          if (!existing || id === state.rootId) return state;
+          const destination = state.nodes[newParentId];
+          if (!existing || !destination || destination.type !== "folder" || id === state.rootId) return state;
+          if (isProtectedNode(existing, state.rootId) || isSystemAppsFolder(destination, state.rootId)) return state;
+          if (isSelfOrDescendant(state.nodes, id, newParentId)) return state;
           if (hasSiblingName(state.nodes, newParentId, existing.name, id)) return state;
           return {
             nodes: {
@@ -203,7 +267,10 @@ export const useFileSystemStore = create<FsState>()(
         const { nodes, rootId } = get();
         const parts: string[] = [];
         let current = nodes[id];
+        const seen = new Set<string>();
         while (current && current.id !== rootId) {
+          if (seen.has(current.id)) return "/";
+          seen.add(current.id);
           parts.unshift(current.name);
           current = current.parentId ? nodes[current.parentId] : undefined!;
         }
@@ -215,13 +282,13 @@ export const useFileSystemStore = create<FsState>()(
       },
     }),
     {
-      name: "webos-filesystem",
-      version: 4,
+      name: scopedStorageKey("filesystem"),
+      version: 6,
       partialize: (state) => ({ nodes: state.nodes, rootId: state.rootId }),
       migrate: (persisted: unknown, version: number) => {
-        const state = persisted as { nodes: Record<string, FsNode>; rootId: string };
-        if (version < 4) {
-          // ensure the System Apps folder exists, then add any shortcuts introduced since (v4: OrbitOS apps)
+        const state = sanitizePersistedFilesystem(persisted);
+        if (version < 6) {
+          // ensure the System Apps folder exists, then add app shortcuts introduced since v4.
           let sysFolder = Object.values(state.nodes).find(
             (n) => n.parentId === state.rootId && n.type === "folder" && n.name === "System Apps",
           );
@@ -248,6 +315,7 @@ export const useFileSystemStore = create<FsState>()(
         }
         return state;
       },
+      merge: (persisted, current) => ({ ...current, ...sanitizePersistedFilesystem(persisted) }),
     },
   ),
 );

@@ -4,6 +4,7 @@ import { useWindowStore } from "../stores/useWindowStore";
 import { useSystemStore } from "../stores/useSystemStore";
 import { clampWorkspace } from "./workspaces";
 import { fitRectToWorkArea } from "./geometry";
+import { scopedStorageKey } from "../platform/storageScope";
 
 /**
  * Optional session restore (from webos-master's persisted window store).
@@ -11,7 +12,7 @@ import { fitRectToWorkArea } from "./geometry";
  * "Restore windows on reload". Windows are validated on the way back in:
  * unknown apps are dropped and geometry is re-fitted to the viewport.
  */
-const KEY = "webos-session";
+const KEY = scopedStorageKey("session");
 
 interface SessionSnapshot {
   windows: WindowState[];

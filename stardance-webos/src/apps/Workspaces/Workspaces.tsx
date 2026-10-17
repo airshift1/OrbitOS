@@ -23,6 +23,7 @@ import { notify } from "../../stores/useNotificationStore";
 import { Button } from "../../ui";
 import { AppPanelModel } from "./AppPanel";
 import { addFloatingApp, createDefaultLayout, createEngine, restoreLayout } from "./engine";
+import { scopedStorageKey } from "../../platform/storageScope";
 import "./Workspaces.css";
 
 library.add(
@@ -42,7 +43,7 @@ library.add(
   faUser,
 );
 
-const LAYOUT_KEY = "webos-workspace-layout";
+const LAYOUT_KEY = scopedStorageKey("workspace-layout");
 
 /**
  * Tiling Workspace — react-workspaces (@projectstorm) hosting real OrbitOS

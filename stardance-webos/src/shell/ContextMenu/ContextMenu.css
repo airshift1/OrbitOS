@@ -5,7 +5,7 @@
   min-width: 200px;
   padding: var(--space-1);
   color: var(--color-text);
-  background: var(--color-panel);
+  background: var(--color-panel-tint);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-panel);
@@ -24,10 +24,18 @@
   font-size: var(--text-sm);
   text-align: left;
   border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
 }
 .ctx-item:hover,
-.ctx-item:focus-visible { background: var(--color-hover); outline: none; box-shadow: inset 2px 0 var(--color-accent); }
+.ctx-item:focus-visible { background: var(--color-accent-soft); outline: none; box-shadow: inset 2px 0 var(--color-accent-cool); }
 .ctx-item--danger { color: var(--color-danger); }
+.ctx-item:disabled { cursor: not-allowed; opacity: .42; }
+.ctx-item:disabled:hover { background: transparent; box-shadow: none; }
+.ctx-item-wrap { position: relative; }
+.ctx-item > span:first-of-type { flex: 1; }
+.ctx-arrow { flex: 0 0 auto; color: var(--color-text-dim); font-size: 18px; line-height: 1; }
+.ctx-submenu { position: absolute; z-index: 2; top: -4px; left: calc(100% + 4px); min-width: 190px; padding: var(--space-1); color: var(--color-text); background: var(--color-panel-tint); border: 1px solid var(--color-border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-panel); }
 .ctx-sep { height: 1px; margin: var(--space-1) var(--space-2); background: var(--color-border); }
 
 @media (pointer: coarse) { .ctx-item { min-height: 40px; } }

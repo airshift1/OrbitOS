@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { scopedStorageKey } from "../platform/storageScope";
 
 export interface Note {
   id: string;
@@ -74,6 +75,6 @@ export const useNotesStore = create<NotesState>()(
 
       select: (id) => set({ selectedId: id }),
     }),
-    { name: "webos-notes", version: 1, partialize: (s) => ({ notes: s.notes, selectedId: s.selectedId }) },
+    { name: scopedStorageKey("notes"), version: 1, partialize: (s) => ({ notes: s.notes, selectedId: s.selectedId }) },
   ),
 );

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { Bluetooth as BluetoothIcon, X } from "lucide-react";
 import { useSystemStore } from "../../stores/useSystemStore";
 import { useNotificationStore, type NotifKind } from "../../stores/useNotificationStore";
 import { launchApp } from "../../lib/launch";
 import { timeAgo, cx } from "../../lib/helpers";
 import { playSound } from "../../lib/sound";
 import { Button, EmptyState, Switch } from "../../ui";
+import { useBluetooth } from "../../platform/BluetoothContext";
 import "./QuickPanel.css";
 
 interface Props {
@@ -23,6 +24,23 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
         {hint && <small>{hint}</small>}
       </span>
       <Switch checked={checked} onChange={onChange} label={label} />
+    </li>
+  );
+}
+
+function BluetoothRow() {
+  const bluetooth = useBluetooth();
+  const connected = bluetooth.status === "connected";
+  const canConnect = bluetooth.availability === "supported" && bluetooth.status !== "requesting";
+  return (
+    <li className="qp__toggle qp__bluetooth">
+      <span className="qp__toggle-text">
+        <span><BluetoothIcon size={14} aria-hidden="true" /> Bluetooth</span>
+        <small>{connected ? bluetooth.deviceName : bluetooth.message}</small>
+      </span>
+      <Button size="sm" variant={connected ? "quiet" : "primary"} disabled={!canConnect && !connected} onClick={connected ? bluetooth.disconnect : () => void bluetooth.connect()}>
+        {connected ? "Disconnect" : bluetooth.status === "requesting" ? "Waiting…" : "Connect"}
+      </Button>
     </li>
   );
 }
@@ -55,7 +73,7 @@ export function QuickPanel({ open, onClose }: Props) {
         <section className="qp__section" aria-label="Quick settings">
           <ul className="qp__toggles">
             <ToggleRow label="Wi-Fi" hint="Simulated" checked={s.wifi} onChange={s.setWifi} />
-            <ToggleRow label="Bluetooth" hint="Simulated" checked={s.bluetooth} onChange={s.setBluetooth} />
+            <BluetoothRow />
             <ToggleRow label="Do not disturb" hint="No pop-ups or alert sounds" checked={s.doNotDisturb} onChange={s.setDoNotDisturb} />
             <ToggleRow label="Light theme" checked={s.theme === "light"} onChange={(v) => s.setTheme(v ? "light" : "orbit")} />
             <ToggleRow label="Night light" checked={s.nightMode} onChange={s.setNightMode} />

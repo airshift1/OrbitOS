@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { WindowState } from "../../types";
 import { getIcon } from "../../lib/icons";
 import { TASKBAR_HEIGHT } from "../../lib/geometry";
+import { useSystemStore } from "../../stores/useSystemStore";
 
 const PREVIEW_W = 240;
 const PREVIEW_H = 150;
@@ -19,6 +20,7 @@ interface Props {
  * pixels are copied across so Paint & friends preview correctly.
  */
 export function WindowPreview({ win, anchor }: Props) {
+  const dockPosition = useSystemStore((s) => s.customization.dockPosition);
   const boxRef = useRef<HTMLDivElement>(null);
   const Icon = getIcon(win.icon);
 
@@ -71,7 +73,12 @@ export function WindowPreview({ win, anchor }: Props) {
   );
 
   return createPortal(
-    <div className="tb-preview" style={{ left, bottom: TASKBAR_HEIGHT + 10, width: PREVIEW_W }} role="tooltip">
+    <div className="tb-preview" style={{
+      left: dockPosition === "right" ? Math.max(8, anchor.left - PREVIEW_W - 12) : dockPosition === "left" ? anchor.right + 12 : left,
+      top: dockPosition === "bottom" ? undefined : Math.min(Math.max(8, anchor.top + anchor.height / 2 - PREVIEW_H / 2), window.innerHeight - PREVIEW_H - 8),
+      bottom: dockPosition === "bottom" ? TASKBAR_HEIGHT + 10 : undefined,
+      width: PREVIEW_W,
+    }} role="tooltip">
       <div className="tb-preview__title">
         <Icon size={13} />
         <span>{win.title}</span>

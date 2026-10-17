@@ -4,7 +4,6 @@ import {
   Pencil, Check, X, Plus, Trash2, RotateCcw,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AppProps } from "../../types";
 import { useProfileStore } from "../../stores/useProfileStore";
 import type { Profile, ProfileProject } from "../../stores/useProfileStore";
 import { safeHttpUrl, safeMailto } from "../../lib/security";
@@ -19,7 +18,7 @@ const SOCIAL_ICONS: Record<string, LucideIcon> = {
 
 const emptyProject: ProfileProject = { title: "", description: "", tags: [], url: "" };
 
-export function AboutMe({}: AppProps) {
+export function AboutMe() {
   const profile = useProfileStore((s) => s.profile);
   const setProfile = useProfileStore((s) => s.setProfile);
   const resetProfile = useProfileStore((s) => s.resetProfile);

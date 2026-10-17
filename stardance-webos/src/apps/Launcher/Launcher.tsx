@@ -43,7 +43,7 @@ export function Launcher(_props: AppProps) {
             return (
               <li key={a.id} className="launcher__row">
                 <button type="button" className="launcher__open" onClick={() => launchApp(a.id)}>
-                  <AppIcon icon={a.icon} size={32} />
+                  <AppIcon icon={a.icon} appId={a.id} size={32} />
                   <span className="launcher__name">
                     <strong>{a.name}</strong>
                     <span>{a.description}</span>

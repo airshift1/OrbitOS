@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { getIcon, type IconComponent } from "../../lib/icons";
 import { AppIcon as AppTile } from "../AppIcon";
 import { useNotesStore } from "../../stores/useNotesStore";
@@ -13,47 +13,67 @@ import {
 } from "../../lib/dragDrop";
 import { cx, clamp } from "../../lib/helpers";
 import { isProtectedNode } from "../../lib/fsGuards";
+import { loadWallpaperImage } from "../../lib/wallpaperStorage";
+import { notify } from "../../stores/useNotificationStore";
 import { ContextMenu } from "../ContextMenu/ContextMenu";
 import { RenameDialog, ConfirmDeleteDialog, MoveDialog } from "../FileDialogs/FileDialogs";
 import type { AppId, ContextMenuItem, FsNode } from "../../types";
 import "./Desktop.css";
 
-const APP_SHORTCUTS: AppId[] = ["about-me", "file-explorer", "notes", "terminal", "browser", "settings"];
+const APP_SHORTCUTS: AppId[] = ["about-orbitos", "file-explorer", "notes", "terminal", "browser", "settings"];
 
 const desktopMenuItems: ContextMenuItem[] = [
   { label: "Spotlight Search", icon: "Search", onClick: () => window.dispatchEvent(new CustomEvent("webos:toggle-spotlight")) },
   {
-    label: "New Note",
-    icon: "StickyNote",
-    onClick: () => {
-      useNotesStore.getState().addNote();
-      launchApp("notes");
-    },
+    label: "New",
+    icon: "Plus",
+    submenu: [
+      { label: "Folder", icon: "FolderPlus", onClick: () => { const state = useFileSystemStore.getState(); const desktop = findDesktopFolderId(state.nodes, state.rootId); if (desktop) state.createNode(desktop, "New Folder", "folder"); } },
+      { label: "Text Document", icon: "FileText", onClick: () => { const state = useFileSystemStore.getState(); const desktop = findDesktopFolderId(state.nodes, state.rootId); if (desktop) state.createNode(desktop, "New Document.txt", "file", ""); } },
+      { label: "Note", icon: "StickyNote", onClick: () => { useNotesStore.getState().addNote(); launchApp("notes"); } },
+    ],
   },
+  {
+    label: "Sort By",
+    icon: "ArrowDownAZ",
+    submenu: [
+      { label: "Name", icon: "CaseSensitive", disabled: true },
+      { label: "Date modified", icon: "CalendarClock", disabled: true },
+      { label: "Type", icon: "ListFilter", disabled: true },
+    ],
+  },
+  {
+    label: "View",
+    icon: "LayoutGrid",
+    submenu: [
+      { label: "Large icons", icon: "Grid2X2", disabled: true },
+      { label: "Small icons", icon: "List", disabled: true },
+    ],
+  },
+  { label: "Personalize", icon: "Paintbrush", separatorBefore: true, onClick: () => launchApp("theme-studio") },
+  { label: "Display Settings", icon: "MonitorCog", onClick: () => launchApp("settings") },
+  { label: "System Settings", icon: "Settings", onClick: () => launchApp("settings") },
   { label: "Open Terminal", icon: "TerminalSquare", onClick: () => launchApp("terminal") },
-  { label: "Change Wallpaper", icon: "Image", separatorBefore: true, onClick: () => launchApp("settings") },
   { label: "Theme Studio", icon: "Palette", onClick: () => launchApp("theme-studio") },
   { label: "Refresh", icon: "RefreshCw", separatorBefore: true, onClick: () => location.reload() },
 ];
 
 // Icon grid geometry for default (auto-flow) positions
-const ICON_W = 88;
-const CELL_W = 96;
-const CELL_H = 100;
 const PAD = 16;
 
-function defaultIconPos(index: number): { x: number; y: number } {
+function defaultIconPos(index: number, size: number, spacing: number, leftInset: number): { x: number; y: number } {
   const usable = window.innerHeight - 64 - PAD * 2; // leave room for the taskbar
-  const rows = Math.max(1, Math.floor(usable / CELL_H));
+  const cellSpacing = Math.max(size + 48, spacing);
+  const rows = Math.max(1, Math.floor(usable / cellSpacing));
   return {
-    x: PAD + Math.floor(index / rows) * CELL_W,
-    y: PAD + (index % rows) * CELL_H,
+    x: leftInset + PAD + Math.floor(index / rows) * cellSpacing,
+    y: PAD + (index % rows) * cellSpacing,
   };
 }
 
-function clampIconPos(x: number, y: number): { x: number; y: number } {
+function clampIconPos(x: number, y: number, width: number, leftInset: number, rightInset: number): { x: number; y: number } {
   return {
-    x: clamp(x, 0, window.innerWidth - ICON_W),
+    x: clamp(x, leftInset, window.innerWidth - width - rightInset),
     y: clamp(y, 0, window.innerHeight - 150),
   };
 }
@@ -69,6 +89,7 @@ function findDesktopFolderId(nodes: Record<string, FsNode>, rootId: string): str
 
 export function Desktop({ children }: { children?: ReactNode }) {
   const wallpaper = useSystemStore((s) => s.wallpaper);
+  const customization = useSystemStore((s) => s.customization);
   const pinnedApps = useSystemStore((s) => s.pinnedApps);
   const pinApp = useSystemStore((s) => s.pinApp);
   const unpinApp = useSystemStore((s) => s.unpinApp);
@@ -87,9 +108,34 @@ export function Desktop({ children }: { children?: ReactNode }) {
   const [renameTarget, setRenameTarget] = useState<FsNode | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<FsNode | null>(null);
   const [moveTarget, setMoveTarget] = useState<FsNode | null>(null);
+  const [wallpaperImage, setWallpaperImage] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = "";
+    if (!customization.wallpaperImageId) {
+      setWallpaperImage("");
+      return;
+    }
+    void loadWallpaperImage(customization.wallpaperImageId).then((blob) => {
+      if (!blob) throw new Error("The saved wallpaper image is no longer available.");
+      objectUrl = URL.createObjectURL(blob);
+      if (active) setWallpaperImage(objectUrl);
+      else URL.revokeObjectURL(objectUrl);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      setWallpaperImage("");
+      notify({ title: "Wallpaper unavailable", body: error instanceof Error ? error.message : "Could not load the saved image.", kind: "warning", appId: "settings" });
+    });
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [customization.wallpaperImageId]);
 
   const desktopFolderId = findDesktopFolderId(nodes, rootId);
   const desktopFiles = desktopFolderId ? getChildren(desktopFolderId) : [];
+  const iconSize = Math.round(customization.desktopIconSize * customization.desktopScale / 100);
 
   // Resolve every icon's position: saved position wins, the rest auto-flow
   // down the default column layout.
@@ -101,7 +147,15 @@ export function Desktop({ children }: { children?: ReactNode }) {
       ...desktopFiles.map((n) => n.id),
     ];
     for (const key of keys) {
-      iconPositions[key] = desktopIconPos[key] ?? defaultIconPos(flowIndex++);
+      const index = flowIndex++;
+      const iconSpacing = Math.round(customization.desktopIconSpacing * customization.desktopScale / 100);
+      const leftInset = customization.dockPosition === "left" ? customization.dockSize + 16 : 0;
+      const rightInset = customization.dockPosition === "right" ? customization.dockSize + 16 : 0;
+      const saved = desktopIconPos[key] ?? defaultIconPos(index, iconSize, iconSpacing, leftInset);
+      iconPositions[key] = {
+        x: clamp(saved.x, leftInset, window.innerWidth - iconSize - 44 - rightInset),
+        y: clamp(saved.y, 0, window.innerHeight - 150),
+      };
     }
   }
 
@@ -133,7 +187,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
     // Repositioning an icon that already lives on the desktop
     const icon = getIconDrag(e);
     if (icon) {
-      setDesktopIconPos(icon.key, clampIconPos(e.clientX - icon.dx, e.clientY - icon.dy));
+      setDesktopIconPos(icon.key, clampIconPos(e.clientX - icon.dx, e.clientY - icon.dy, iconSize + 44, customization.dockPosition === "left" ? customization.dockSize + 16 : 0, customization.dockPosition === "right" ? customization.dockSize + 16 : 0));
       return;
     }
 
@@ -142,7 +196,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
     if (desktopFolderId) {
       const nodeId = getDraggedNodeId(e);
       if (dropNodeInto(e, desktopFolderId) && nodeId) {
-        setDesktopIconPos(nodeId, clampIconPos(e.clientX - ICON_W / 2, e.clientY - 40));
+        setDesktopIconPos(nodeId, clampIconPos(e.clientX - iconSize / 2, e.clientY - 40, iconSize + 44, customization.dockPosition === "left" ? customization.dockSize + 16 : 0, customization.dockPosition === "right" ? customization.dockSize + 16 : 0));
       }
     }
   }
@@ -196,13 +250,18 @@ export function Desktop({ children }: { children?: ReactNode }) {
   return (
     <div
       className="desktop"
-      style={{ background: wallpaper }}
+      style={{
+        background: wallpaper,
+        ...(wallpaperImage ? { backgroundImage: `url("${wallpaperImage}")`, backgroundRepeat: "no-repeat" } : {}),
+        backgroundSize: wallpaperImage ? customization.wallpaperFit === "fill" ? "100% 100%" : customization.wallpaperFit === "center" ? "auto" : customization.wallpaperFit : undefined,
+        backgroundPosition: wallpaperImage ? "center" : undefined,
+      } as CSSProperties}
       onClick={handleDesktopClick}
       onContextMenu={handleDesktopContext}
       onDragOver={handleDesktopDragOver}
       onDrop={handleDesktopDrop}
     >
-      <div className="desktop__icons">
+      {customization.desktopShortcutsVisible && <div className="desktop__icons" data-icon-style={customization.iconStyle}>
         {APP_SHORTCUTS.map((appId) => {
           const app = appRegistry[appId];
           const pos = iconPositions[`app-${app.id}`];
@@ -210,15 +269,15 @@ export function Desktop({ children }: { children?: ReactNode }) {
             <button
               key={`app-${app.id}`}
               className={cx("desktop__icon", selectedId === `app-${app.id}` && "desktop__icon--selected")}
-              style={{ left: pos.x, top: pos.y }}
+              style={{ left: pos.x, top: pos.y, "--desktop-icon-size": `${iconSize}px` } as CSSProperties}
               onClick={(e) => { e.stopPropagation(); setSelectedId(`app-${app.id}`); }}
               onDoubleClick={() => launchApp(app.id)}
               onContextMenu={(e) => handleAppContext(e, appId)}
               draggable
               onDragStart={(e) => startIconDrag(e, `app-${app.id}`)}
             >
-              <AppTile icon={app.icon} size={44} />
-              <span>{app.name}</span>
+              <AppTile icon={customization.iconOverrides[app.id] ?? app.icon} appId={app.id} size={iconSize} />
+              {customization.desktopIconLabels && <span>{app.name}</span>}
             </button>
           );
         })}
@@ -228,7 +287,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
           let label = node.name;
           if (node.name.endsWith(".app") && node.content && node.content in appRegistry) {
             const appDef = appRegistry[node.content as AppId];
-            Icon = getIcon(appDef.icon, getIcon("FileText"));
+            Icon = getIcon(customization.iconOverrides[node.content] ?? appDef.icon, getIcon("FileText"));
             label = node.name.replace(/\.app$/, "");
           } else if (isImageFile(node.name)) {
             Icon = getIcon("Image");
@@ -243,7 +302,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
                 selectedId === `fs-${node.id}` && "desktop__icon--selected",
                 dragOverId === node.id && "desktop__icon--dragover",
               )}
-              style={{ left: pos.x, top: pos.y }}
+              style={{ left: pos.x, top: pos.y, "--desktop-icon-size": `${iconSize}px` } as CSSProperties}
               onClick={(e) => { e.stopPropagation(); setSelectedId(`fs-${node.id}`); }}
               onDoubleClick={() => openFsNode(node)}
               onContextMenu={(e) => handleNodeContext(e, node)}
@@ -258,12 +317,12 @@ export function Desktop({ children }: { children?: ReactNode }) {
               onDragLeave={isFolder ? () => setDragOverId((cur) => (cur === node.id ? null : cur)) : undefined}
               onDrop={isFolder ? (e) => { e.preventDefault(); e.stopPropagation(); setDragOverId(null); dropNodeInto(e, node.id); } : undefined}
             >
-              <Icon size={34} strokeWidth={1.6} />
-              <span>{label}</span>
+              <Icon size={iconSize - 8} strokeWidth={1.6} />
+              {customization.desktopIconLabels && <span>{label}</span>}
             </button>
           );
         })}
-      </div>
+      </div>}
       {children}
       {menu && (
         <ContextMenu

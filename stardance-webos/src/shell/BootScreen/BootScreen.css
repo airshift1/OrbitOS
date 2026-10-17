@@ -38,3 +38,13 @@
 .lock__date { font-size: var(--text-lg); color: var(--color-text-dim); margin-bottom: var(--space-6); }
 .lock__user { font-size: var(--text-md); font-weight: 600; }
 .lock__hint { font-size: var(--text-sm); color: var(--color-text-dim); }
+.lock__avatar { display: grid; place-items: center; width: 52px; height: 52px; margin-top: var(--space-4); border-radius: 50%; background: var(--color-accent); color: var(--color-on-accent); font-size: 22px; font-weight: 700; }
+.lock__form { display: flex; flex-wrap: wrap; gap: 8px; max-width: 360px; margin-top: var(--space-3); }
+.lock__form input { min-width: 180px; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-bg) 72%, transparent); color: var(--color-text); font: inherit; outline: none; }
+.lock__form input:focus { border-color: var(--color-accent); }
+.lock__unlock, .lock__actions button { padding: 10px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface-2); color: var(--color-text); font: inherit; cursor: pointer; }
+.lock__unlock { border-color: var(--color-accent); background: var(--color-accent); color: var(--color-on-accent); }
+.lock__error { width: 100%; color: var(--color-danger); font-size: var(--text-xs); }
+.lock__actions { display: flex; gap: 8px; margin-top: var(--space-4); }
+.lock__actions button { border-color: transparent; background: transparent; color: var(--color-text-dim); font-size: var(--text-xs); }
+.lock__actions button:hover { color: var(--color-text); background: var(--color-hover); }

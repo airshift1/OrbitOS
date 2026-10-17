@@ -24,10 +24,19 @@ export type AppId =
   | "settings"
   | "theme-studio"
   | "browser"
+  | "about-orbitos"
   | "about-me"
+  | "profile"
   | "paint"
   | "clock"
   | "task-manager"
+  | "snake"
+  | "orbit-blast"
+  | "dino-run"
+  | "2048"
+  | "sandtrix"
+  | "orbit-depths"
+  | "mortal-kombat-mobile"
   | "launcher"
   | "workspaces";
 
@@ -92,6 +101,35 @@ export interface WindowState extends Rect {
 
 // ---------- System / Settings ----------
 export type ThemeName = "orbit" | "dark" | "light" | "midnight";
+export type WallpaperFit = "cover" | "contain" | "fill" | "center";
+export type DockPosition = "bottom" | "left" | "right";
+export type IconStyle = "default" | "monochrome" | "soft";
+
+export interface DesktopCustomization {
+  wallpaperFit: WallpaperFit;
+  wallpaperImageId: string;
+  desktopIconSize: number;
+  desktopIconSpacing: number;
+  desktopIconLabels: boolean;
+  desktopShortcutsVisible: boolean;
+  dockPosition: DockPosition;
+  dockSize: number;
+  dockSpacing: number;
+  showClock: boolean;
+  showClockDate: boolean;
+  use24HourClock: boolean;
+  windowRadius: number;
+  windowBorder: boolean;
+  windowShadow: boolean;
+  windowAnimations: boolean;
+  transparency: number;
+  blur: number;
+  desktopScale: number;
+  density: "comfortable" | "compact";
+  iconStyle: IconStyle;
+  iconOverrides: Record<string, string>;
+  reduceMotion: boolean;
+}
 
 /** Window chrome styles. "orbit" & "classic" are native; the rest come from @maomaolabs/core. */
 export type WindowStyle = "orbit" | "classic" | "traffic" | "linux" | "yk2000" | "aero";
@@ -113,14 +151,15 @@ export interface SystemSettings {
   /** Re-open windows after a reload. */
   restoreSession: boolean;
   wifi: boolean;
-  bluetooth: boolean;
 }
 
 // ---------- Context menu ----------
 export interface ContextMenuItem {
   label: string;
   icon?: string;
-  onClick: () => void;
+  onClick?: () => void;
   danger?: boolean;
+  disabled?: boolean;
+  submenu?: ContextMenuItem[];
   separatorBefore?: boolean;
 }

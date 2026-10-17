@@ -3,6 +3,7 @@ import type { AppId, Rect, SnapZoneName, WindowState } from "../types";
 import { getWorkArea, fitRectToWorkArea, clampWindowPosition } from "../lib/geometry";
 import { zoneToRect } from "../lib/snap";
 import { clampWorkspace } from "../lib/workspaces";
+import { clamp } from "../lib/helpers";
 
 /**
  * Window manager state.
@@ -83,10 +84,10 @@ export const useWindowStore = create<WindowStoreState>()((set, get) => ({
     const onActive = windows.filter((w) => w.workspace === activeWorkspace);
     const cascade = onActive.length % 6;
     const area = getWorkArea();
-    const width = Math.min(params.width, Math.max(320, area.width - 24));
-    const height = Math.min(params.height, Math.max(220, area.height - 24));
-    const p = Math.max(0, Math.min(132 + cascade * CASCADE_STEP, area.width - width));
-    const q = Math.max(0, Math.min(60 + cascade * CASCADE_STEP, area.height - height));
+    const width = Math.min(params.width, Math.max(240, area.width - 24));
+    const height = Math.min(params.height, Math.max(180, area.height - 24));
+    const p = Math.max(area.x + 12, Math.min(area.x + (area.width - width) / 2 + ((cascade % 3) - 1) * CASCADE_STEP, area.x + area.width - width - 12));
+    const q = Math.max(area.y + 12, Math.min(area.y + (area.height - height) / 2 + ((cascade % 3) - 1) * CASCADE_STEP, area.y + area.height - height - 12));
     const win: WindowState = {
       id,
       appId: params.appId,
@@ -174,8 +175,8 @@ export const useWindowStore = create<WindowStoreState>()((set, get) => ({
           snapZone: undefined,
           // If it was snapped, remember the pre-snap geometry rather than the tile.
           prevBounds: w.prevBounds ?? { x: w.x, y: w.y, width: w.width, height: w.height },
-          x: 0,
-          y: 0,
+          x: area.x,
+          y: area.y,
           width: area.width,
           height: area.height,
         };
@@ -215,7 +216,8 @@ export const useWindowStore = create<WindowStoreState>()((set, get) => ({
     const ratio = w.width > 0 ? Math.min(1, Math.max(0, (pointerX - w.x) / w.width)) : 0.5;
     const nx = pointerX - ratio * prev.width;
     const ny = Math.max(0, pointerY - 16);
-    const next: Rect = { x: nx, y: ny, width: prev.width, height: prev.height };
+    const position = clampWindowPosition(nx, ny, prev.width);
+    const next: Rect = { ...position, width: prev.width, height: prev.height };
     set((state) => ({
       windows: state.windows.map((x) =>
         x.id === id ? { ...x, ...next, isMaximized: false, snapZone: undefined, prevBounds: undefined } : x,
@@ -262,14 +264,17 @@ export const useWindowStore = create<WindowStoreState>()((set, get) => ({
     set((state) => ({
       windows: state.windows.map((w) => {
         if (w.isMaximized) {
-          if (w.x === 0 && w.y === 0 && w.width === area.width && w.height === area.height) return w;
-          return { ...w, x: 0, y: 0, width: area.width, height: area.height };
+          if (w.x === area.x && w.y === area.y && w.width === area.width && w.height === area.height) return w;
+          return { ...w, x: area.x, y: area.y, width: area.width, height: area.height };
         }
         if (w.snapZone) return { ...w, ...zoneToRect(w.snapZone, 240, 160) };
-        const width = Math.min(w.width, Math.max(240, area.width));
+        const width = Math.min(w.width, Math.max(240, area.width - 12));
+        const height = Math.min(w.height, Math.max(180, area.height - 12));
         const p = clampWindowPosition(w.x, w.y, width);
-        if (p.x === w.x && p.y === w.y && width === w.width) return w;
-        return { ...w, x: p.x, y: p.y, width };
+        const x = clamp(p.x, area.x, Math.max(area.x, area.x + area.width - width));
+        const y = clamp(p.y, area.y, Math.max(area.y, area.y + area.height - height));
+        if (x === w.x && y === w.y && width === w.width && height === w.height) return w;
+        return { ...w, x, y, width, height };
       }),
     }));
   },

@@ -1,7 +1,7 @@
 {
   "name": "stardance-webos",
   "version": "1.0.0",
-  "description": "OrbitOS \u2014 a polished browser-based operating system for the Hack Club Stardance WebOS 1 mission.",
+  "description": "OrbitOS — a polished browser-based operating system for the Hack Club Stardance WebOS 1 mission.",
   "private": true,
   "type": "module",
   "keywords": [
@@ -16,9 +16,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:desktop": "tsc -b && vite build --mode desktop",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "multiplayer:server": "tsx server/index.ts",
+    "multiplayer:server:watch": "tsx watch server/index.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -41,14 +44,18 @@
     "lucide-react": "^1.25.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "three": "^0.186.1",
+    "ws": "^8.22.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.186.0",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^5.0.1"

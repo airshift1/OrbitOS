@@ -22,7 +22,11 @@ function showFatal(root: HTMLElement) {
   root.replaceChildren(box);
 }
 
-const rootEl = document.getElementById("root")!;
+const rootEl = document.getElementById("root");
+if (!rootEl) {
+  throw new Error("OrbitOS root element is missing");
+}
+
 try {
   restoreSession();
   startSessionPersistence();

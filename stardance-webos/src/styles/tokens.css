@@ -23,6 +23,13 @@
   --color-danger: #ee7a68;
   --color-success: #86b98f;
   --color-warning: #d9a441;
+  --color-info: #7f9fd3;
+  --color-accent-cool: #5fa8a0;
+  --color-accent-gold: #d9a441;
+  --color-icon-surface: color-mix(in srgb, var(--color-accent-cool) 18%, var(--color-surface-2));
+  --color-panel-tint: color-mix(in srgb, var(--color-accent-cool) 7%, var(--color-panel));
+  --color-titlebar-active: color-mix(in srgb, var(--color-accent) 10%, var(--color-titlebar));
+  --color-taskbar-line: color-mix(in srgb, var(--color-accent-cool) 48%, var(--color-accent));
   --color-border: rgba(234, 230, 220, 0.16);
   --color-border-strong: rgba(234, 230, 220, 0.34);
   --color-hover: rgba(234, 230, 220, 0.07);
@@ -123,6 +130,9 @@
   --color-danger: #b3321f;
   --color-success: #2f6b3f;
   --color-warning: #8a5a00;
+  --color-info: #41679c;
+  --color-accent-cool: #397f7a;
+  --color-accent-gold: #8a5a00;
   --color-border: rgba(27, 26, 22, 0.2);
   --color-border-strong: rgba(27, 26, 22, 0.45);
   --color-hover: rgba(27, 26, 22, 0.06);

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Lock, Power, RotateCcw, Search, Settings as SettingsIcon } from "lucide-react";
+import { Lock, LogOut, Power, RotateCcw, Search, Settings as SettingsIcon, UserRound } from "lucide-react";
 import type { AppId, ContextMenuItem } from "../../types";
 import { appList, appRegistry } from "../../apps/registry";
 import { useSystemStore } from "../../stores/useSystemStore";
+import { useIdentity } from "../../platform/IdentityContext";
 import { launchApp } from "../../lib/launch";
 import { searchAll, type SearchItem } from "../../lib/search";
 import { lockOS, restartOS } from "../../lib/power";
@@ -19,6 +20,7 @@ interface Props {
 
 export function StartMenu({ open, onClose }: Props) {
   const username = useSystemStore((s) => s.username);
+  const { user, signOut } = useIdentity();
   const pinnedApps = useSystemStore((s) => s.pinnedApps);
   const recentApps = useSystemStore((s) => s.recentApps);
   const pinApp = useSystemStore((s) => s.pinApp);
@@ -96,7 +98,7 @@ export function StartMenu({ open, onClose }: Props) {
         onContextMenu={(e) => appMenu(e, id)}
         title={app.description}
       >
-        <AppIcon icon={app.icon} size={40} />
+        <AppIcon icon={app.icon} appId={id} size={40} />
         <span>{app.name}</span>
       </button>
     );
@@ -154,7 +156,7 @@ export function StartMenu({ open, onClose }: Props) {
                           onClick={() => run(() => launchApp(id))}
                           onContextMenu={(e) => appMenu(e, id)}
                         >
-                          <AppIcon icon={app.icon} size={26} />
+                          <AppIcon icon={app.icon} appId={id} size={26} />
                           <span>{app.name}</span>
                         </button>
                       );
@@ -168,15 +170,18 @@ export function StartMenu({ open, onClose }: Props) {
 
         <div className="startmenu__footer">
           <div className="startmenu__user">
-            <span className="startmenu__avatar">{username.charAt(0).toUpperCase() || "A"}</span>
+            <span className="startmenu__avatar">{(user?.avatar ?? username.charAt(0).toUpperCase()) || "A"}</span>
             <span className="startmenu__user-text">
-              <strong>{username}</strong>
-              <small>OrbitOS · Stardance</small>
+              <strong>{user?.displayName ?? username}</strong>
+              <small>{user?.isGuest ? "Guest session" : "OrbitOS account"}</small>
             </span>
           </div>
           <div className="startmenu__power">
             <button type="button" title="Settings" aria-label="Settings" onClick={() => run(() => launchApp("settings"))}>
               <SettingsIcon size={16} />
+            </button>
+            <button type="button" title="Profile" aria-label="Open profile" onClick={() => run(() => launchApp("profile"))}>
+              <UserRound size={16} />
             </button>
             <button type="button" title="Lock" aria-label="Lock screen" onClick={() => run(lockOS)}>
               <Lock size={16} />
@@ -186,6 +191,9 @@ export function StartMenu({ open, onClose }: Props) {
             </button>
             <button type="button" title="Power off (lock)" aria-label="Power off" onClick={() => run(lockOS)}>
               <Power size={16} />
+            </button>
+            <button type="button" title="Sign out" aria-label="Sign out" onClick={() => { signOut(); window.location.reload(); }}>
+              <LogOut size={16} />
             </button>
           </div>
         </div>

@@ -6,7 +6,7 @@
  *  - all scripts, fonts and images are bundled, so 'self' is enough
  *  - `style-src 'unsafe-inline'`: emotion (react-workspaces) and Font Awesome inject <style> tags at runtime
  *  - `frame-src https:`: the Browser app embeds arbitrary https pages (sandboxed, see MiniBrowser)
- *  - no network calls are made by the app itself, so connect-src is 'self'
+ *  - optional Snake multiplayer connects to a separately configured HTTPS/WSS service
  */
 export const CSP = [
   "default-src 'self'",
@@ -14,7 +14,7 @@ export const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  "connect-src 'self'",
+  "connect-src 'self' wss:",
   "frame-src https:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -29,6 +29,6 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(self), interest-cohort=()",
   "Cross-Origin-Opener-Policy": "same-origin",
 };

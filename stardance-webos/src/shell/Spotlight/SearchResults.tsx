@@ -42,7 +42,7 @@ export function SearchResults({ items, activeIndex, onHover, onRun, emptyText = 
                 onMouseEnter={() => onHover(index)}
                 onClick={() => onRun(it)}
               >
-                <AppIcon icon={it.icon} size={32} />
+                <AppIcon icon={it.icon} appId={it.appId} size={32} />
                 <span className="sr__text">
                   <span className="sr__title">{it.title}</span>
                   {it.subtitle && <span className="sr__sub">{it.subtitle}</span>}

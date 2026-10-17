@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import type { AppId } from "../types";
 import { useSystemStore } from "./useSystemStore";
 import { playSound } from "../lib/sound";
+import { scopedStorageKey } from "../platform/storageScope";
 
 export type NotifKind = "info" | "success" | "warning" | "error";
 
@@ -65,7 +66,7 @@ export const useNotificationStore = create<NotificationState>()(
       clear: () => set({ items: [], toasts: [] }),
     }),
     {
-      name: "webos-notifications",
+      name: scopedStorageKey("notifications"),
       version: 1,
       partialize: (s) => ({ items: s.items }),
     },

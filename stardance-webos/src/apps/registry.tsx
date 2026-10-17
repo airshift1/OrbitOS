@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ComponentType } from "react";
 import type { AppDefinition, AppId, AppProps } from "../types";
 import { Calculator } from "./Calculator/Calculator";
 import { TextEditor } from "./TextEditor/TextEditor";
@@ -7,6 +7,8 @@ import { Terminal } from "./Terminal/Terminal";
 import { Settings } from "./Settings/Settings";
 import { MiniBrowser } from "./MiniBrowser/MiniBrowser";
 import { AboutMe } from "./AboutMe/AboutMe";
+import { AboutOrbitOS } from "./AboutOrbitOS";
+import { Profile } from "./Profile";
 import { Paint } from "./Paint/Paint";
 import { Clock } from "./Clock/Clock";
 import { TaskManager } from "./TaskManager/TaskManager";
@@ -14,6 +16,7 @@ import { Welcome } from "./Welcome/Welcome";
 import { Notes } from "./Notes/Notes";
 import { Launcher } from "./Launcher/Launcher";
 import { ThemeStudio } from "./ThemeStudio/ThemeStudio";
+import { Snake } from "./Snake/Snake";
 
 // The tiling engine (react-workspaces + emotion + Font Awesome) is the heaviest
 // dependency, so it is split into its own chunk and loaded on first launch.
@@ -26,6 +29,24 @@ function WorkspacesApp(props: AppProps) {
     </Suspense>
   );
 }
+
+function lazyApp(load: () => Promise<{ default: ComponentType<AppProps> }>) {
+  const Component = lazy(load);
+  return function LazyApp(props: AppProps) {
+    return (
+      <Suspense fallback={<div className="app-loading">Loading game…</div>}>
+        <Component {...props} />
+      </Suspense>
+    );
+  };
+}
+
+const DinoRunApp = lazyApp(() => import("./DinoRun/DinoRun").then(({ DinoRun }) => ({ default: DinoRun })));
+const OrbitBlastApp = lazyApp(() => import("./OrbitBlast/OrbitBlast").then(({ OrbitBlast }) => ({ default: OrbitBlast })));
+const OrbitDepthsApp = lazyApp(() => import("./OrbitDepths/OrbitDepthsGame").then(({ OrbitDepths }) => ({ default: OrbitDepths })));
+const MortalKombatMobileApp = lazyApp(() => import("./MortalKombatMobile/MortalKombatMobile").then(({ MortalKombatMobile }) => ({ default: MortalKombatMobile })));
+const Number2048App = lazyApp(() => import("./Number2048/Number2048").then(({ Number2048 }) => ({ default: Number2048 })));
+const SandtrixApp = lazyApp(() => import("./Sandtrix/Sandtrix").then(({ Sandtrix }) => ({ default: Sandtrix })));
 
 /**
  * Every OrbitOS app. `accent` tints its icon tile, `category` drives the App
@@ -180,6 +201,104 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     singleInstance: true,
     panelSafe: true,
   },
+  snake: {
+    id: "snake",
+    name: "Snake",
+    icon: "Gamepad2",
+    description: "Classic Snake or a magical Unicorn Dreams adventure",
+    category: "Tools",
+    component: Snake,
+    defaultWidth: 1120,
+    defaultHeight: 820,
+    minWidth: 320,
+    minHeight: 360,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "orbit-blast": {
+    id: "orbit-blast",
+    name: "Orbit Blast",
+    icon: "Orbit",
+    description: "Clear matching blocks and build your score",
+    category: "Tools",
+    component: OrbitBlastApp,
+    defaultWidth: 900,
+    defaultHeight: 760,
+    minWidth: 360,
+    minHeight: 360,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "dino-run": {
+    id: "dino-run",
+    name: "Dino Run",
+    icon: "Activity",
+    description: "Jump over obstacles and chase a new high score",
+    category: "Tools",
+    component: DinoRunApp,
+    defaultWidth: 1000,
+    defaultHeight: 680,
+    minWidth: 360,
+    minHeight: 320,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "2048": {
+    id: "2048",
+    name: "2048",
+    icon: "LayoutGrid",
+    description: "Slide tiles, merge numbers, and reach 2048",
+    category: "Tools",
+    component: Number2048App,
+    defaultWidth: 740,
+    defaultHeight: 780,
+    minWidth: 360,
+    minHeight: 380,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  sandtrix: {
+    id: "sandtrix",
+    name: "Sandtrix",
+    icon: "Layers",
+    description: "Drop colored grains and clear solid rows",
+    category: "Tools",
+    component: SandtrixApp,
+    defaultWidth: 740,
+    defaultHeight: 780,
+    minWidth: 360,
+    minHeight: 380,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "orbit-depths": {
+    id: "orbit-depths",
+    name: "Orbit Depths",
+    icon: "Focus",
+    description: "Explore a maze and clear the glowing targets",
+    category: "Tools",
+    component: OrbitDepthsApp,
+    defaultWidth: 1120,
+    defaultHeight: 780,
+    minWidth: 400,
+    minHeight: 360,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "mortal-kombat-mobile": {
+    id: "mortal-kombat-mobile",
+    name: "Mortal Kombat Mobile",
+    icon: "Globe",
+    description: "Open the game listing you shared",
+    category: "Internet",
+    component: MortalKombatMobileApp,
+    defaultWidth: 800,
+    defaultHeight: 600,
+    minWidth: 360,
+    minHeight: 320,
+    singleInstance: true,
+    panelSafe: true,
+  },
   launcher: {
     id: "launcher",
     name: "App Launcher",
@@ -222,6 +341,20 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     singleInstance: true,
     panelSafe: true,
   },
+  "about-orbitos": {
+    id: "about-orbitos",
+    name: "About OrbitOS",
+    icon: "User",
+    description: "System information, credits and version",
+    category: "System",
+    component: AboutOrbitOS,
+    defaultWidth: 560,
+    defaultHeight: 520,
+    minWidth: 380,
+    minHeight: 320,
+    singleInstance: true,
+    panelSafe: true,
+  },
   "about-me": {
     id: "about-me",
     name: "About Me",
@@ -232,6 +365,20 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     defaultWidth: 560,
     defaultHeight: 520,
     minWidth: 380,
+    minHeight: 320,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  profile: {
+    id: "profile",
+    name: "Profile",
+    icon: "UserRound",
+    description: "Your account and personal preferences",
+    category: "System",
+    component: Profile,
+    defaultWidth: 480,
+    defaultHeight: 420,
+    minWidth: 360,
     minHeight: 320,
     singleInstance: true,
     panelSafe: true,

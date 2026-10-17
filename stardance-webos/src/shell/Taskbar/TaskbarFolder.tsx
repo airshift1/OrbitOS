@@ -7,9 +7,11 @@ import { getIcon } from "../../lib/icons";
 import { TASKBAR_HEIGHT } from "../../lib/geometry";
 import { AppIcon } from "../AppIcon";
 import { cx } from "../../lib/helpers";
+import { useSystemStore } from "../../stores/useSystemStore";
 
 /** A taskbar button that opens a flyout of grouped apps (hover or click). */
 export function TaskbarFolder({ folder }: { folder: TaskbarFolderDef }) {
+  const dockPosition = useSystemStore((s) => s.customization.dockPosition);
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -57,8 +59,13 @@ export function TaskbarFolder({ folder }: { folder: TaskbarFolderDef }) {
             className="tb-folder"
             role="menu"
             style={{
-              left: Math.min(Math.max(8, rect.left + rect.width / 2 - 110), window.innerWidth - 228),
-              bottom: TASKBAR_HEIGHT + 10,
+              left: dockPosition === "left"
+                ? rect.right + 10
+                : dockPosition === "right"
+                  ? Math.max(8, rect.left - 242)
+                  : Math.min(Math.max(8, rect.left + rect.width / 2 - 110), window.innerWidth - 228),
+              top: dockPosition === "bottom" ? undefined : Math.min(Math.max(8, rect.top + rect.height / 2 - 100), window.innerHeight - 220),
+              bottom: dockPosition === "bottom" ? TASKBAR_HEIGHT + 10 : undefined,
             }}
             onMouseEnter={show}
             onMouseLeave={hideSoon}
@@ -78,7 +85,7 @@ export function TaskbarFolder({ folder }: { folder: TaskbarFolderDef }) {
                       launchApp(id);
                     }}
                   >
-                    <AppIcon icon={app.icon} size={38} />
+                    <AppIcon icon={app.icon} appId={id} size={38} />
                     <span>{app.name}</span>
                   </button>
                 );

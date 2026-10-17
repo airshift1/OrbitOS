@@ -10,6 +10,7 @@ import { clampWindowPosition } from "../../lib/geometry";
 import { WORKSPACE_INDICES } from "../../lib/workspaces";
 import { playSound } from "../../lib/sound";
 import { useIsMobile } from "../../lib/useIsMobile";
+import { getWorkArea } from "../../lib/geometry";
 import { getIcon } from "../../lib/icons";
 import { cx } from "../../lib/helpers";
 import type { ContextMenuItem } from "../../types";
@@ -41,6 +42,7 @@ function WindowImpl({ win }: WindowProps) {
 
   const isMobile = useIsMobile();
   const windowStyle = useSystemStore((s) => s.windowStyle);
+  const iconOverride = useSystemStore((s) => s.customization.iconOverrides[win.appId]);
   const activeWorkspace = useWindowStore((s) => s.activeWorkspace);
   const focused = useWindowStore((s) => s.focusedId === win.id);
   // On phones only the top-most visible window is shown, full-screen.
@@ -157,23 +159,22 @@ function WindowImpl({ win }: WindowProps) {
     const onMove = (ev: PointerEvent) => {
       const dx = ev.clientX - sx;
       const dy = ev.clientY - sy;
+      const area = getWorkArea();
+      const minimumWidth = Math.min(minW, area.width);
+      const minimumHeight = Math.min(minH, area.height);
       let x = bx;
       let y = by;
       let w = bw;
       let h = bh;
-      if (dir.includes("e")) w = Math.max(minW, bw + dx);
-      if (dir.includes("s")) h = Math.max(minH, bh + dy);
+      if (dir.includes("e")) w = Math.min(area.width - bx, Math.max(minimumWidth, bw + dx));
+      if (dir.includes("s")) h = Math.min(area.height - by, Math.max(minimumHeight, bh + dy));
       if (dir.includes("w")) {
-        w = Math.max(minW, bw - dx);
-        x = bx + (bw - w);
+        x = Math.max(0, Math.min(bx + dx, bx + bw - minimumWidth));
+        w = Math.min(area.width - x, bx + bw - x);
       }
       if (dir.includes("n")) {
-        h = Math.max(minH, bh - dy);
-        y = by + (bh - h);
-      }
-      if (y < 0) {
-        h += y;
-        y = 0;
+        y = Math.max(0, Math.min(by + dy, by + bh - minimumHeight));
+        h = Math.min(area.height - y, by + bh - y);
       }
       useWindowStore.getState().setBounds(win.id, { x, y, width: w, height: h });
     };
@@ -246,7 +247,7 @@ function WindowImpl({ win }: WindowProps) {
   const MaxIcon = getIcon(win.isMaximized ? "Copy" : "Square");
   const MinIcon = getIcon("Minus");
   const CloseIcon = getIcon("X");
-  const TitleIcon = getIcon(win.icon);
+  const TitleIcon = getIcon(iconOverride ?? win.icon);
 
   return (
     <div

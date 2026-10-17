@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { AppId, SystemSettings, ThemeName, WindowStyle } from "../types";
+import type { AppId, DesktopCustomization, SystemSettings, ThemeName, WindowStyle } from "../types";
 import { DEFAULT_WALLPAPER, LEGACY_DEFAULT_WALLPAPER_MARKER } from "../lib/wallpapers";
 import { isHexColor, sanitizeWallpaper } from "../lib/security";
+import { scopedStorageKey } from "../platform/storageScope";
 
 export interface IconPos {
   x: number;
@@ -17,6 +18,8 @@ export interface ThemeOverrides {
   radiusSm?: number;
 }
 
+export type SnakeVisualMode = "classic" | "unicorn";
+
 const MAX_RECENTS = 6;
 
 interface SystemStoreState extends SystemSettings {
@@ -28,6 +31,8 @@ interface SystemStoreState extends SystemSettings {
   /** Saved desktop icon positions, keyed by icon key ("app-<id>" or fs node id). */
   desktopIconPos: Record<string, IconPos>;
   themeOverrides: ThemeOverrides;
+  customization: DesktopCustomization;
+  snakeVisualMode: SnakeVisualMode;
   welcomed: boolean;
 
   setDesktopIconPos: (key: string, pos: IconPos) => void;
@@ -43,12 +48,13 @@ interface SystemStoreState extends SystemSettings {
   setStartupSound: (v: boolean) => void;
   setRestoreSession: (v: boolean) => void;
   setWifi: (v: boolean) => void;
-  setBluetooth: (v: boolean) => void;
   toggleSound: () => void;
   setBooted: (v: boolean) => void;
   setLocked: (v: boolean) => void;
   setWelcomed: (v: boolean) => void;
   setThemeOverrides: (o: ThemeOverrides) => void;
+  setCustomization: (customization: Partial<DesktopCustomization>) => void;
+  setSnakeVisualMode: (mode: SnakeVisualMode) => void;
   pinApp: (id: AppId) => void;
   unpinApp: (id: AppId) => void;
   pushRecent: (id: AppId) => void;
@@ -72,14 +78,39 @@ const defaults: SystemSettings = {
   startupSound: false,
   restoreSession: false,
   wifi: true,
-  bluetooth: false,
+};
+
+export const DEFAULT_CUSTOMIZATION: DesktopCustomization = {
+  wallpaperFit: "cover",
+  wallpaperImageId: "",
+  desktopIconSize: 44,
+  desktopIconSpacing: 100,
+  desktopIconLabels: true,
+  desktopShortcutsVisible: true,
+  dockPosition: "bottom",
+  dockSize: 48,
+  dockSpacing: 2,
+  showClock: true,
+  showClockDate: true,
+  use24HourClock: false,
+  windowRadius: 4,
+  windowBorder: true,
+  windowShadow: true,
+  windowAnimations: true,
+  transparency: 0,
+  blur: 0,
+  desktopScale: 100,
+  density: "comfortable",
+  iconStyle: "default",
+  iconOverrides: {},
+  reduceMotion: false,
 };
 
 const DEFAULT_PINNED: AppId[] = ["notes", "file-explorer", "settings"];
 
 const THEMES: ThemeName[] = ["orbit", "dark", "light", "midnight"];
 const STYLES: WindowStyle[] = ["orbit", "classic", "traffic", "linux", "yk2000", "aero"];
-const APP_ID = /^[a-z][a-z-]{0,30}$/;
+const APP_ID = /^(?:[a-z][a-z-]{0,30}|2048)$/;
 
 const clampNum = (v: unknown, min: number, max: number, fallback: number) =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(min, Math.min(max, Math.round(v))) : fallback;
@@ -99,6 +130,50 @@ function cleanOverrides(o: unknown): ThemeOverrides {
   if (typeof r.radiusWin === "number") out.radiusWin = clampNum(r.radiusWin, 0, 24, 4);
   if (typeof r.radiusSm === "number") out.radiusSm = clampNum(r.radiusSm, 0, 14, 2);
   return out;
+}
+
+const CUSTOMIZATION_ENUMS = {
+  wallpaperFit: ["cover", "contain", "fill", "center"],
+  dockPosition: ["bottom", "left", "right"],
+  density: ["comfortable", "compact"],
+  iconStyle: ["default", "monochrome", "soft"],
+} as const;
+
+export function sanitizeCustomization(value: unknown): DesktopCustomization {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const enums = (key: keyof typeof CUSTOMIZATION_ENUMS, fallback: string) =>
+    CUSTOMIZATION_ENUMS[key].includes(raw[key] as never) ? raw[key] as string : fallback;
+  const iconOverrides: Record<string, string> = {};
+  if (raw.iconOverrides && typeof raw.iconOverrides === "object") {
+    for (const [id, icon] of Object.entries(raw.iconOverrides as Record<string, unknown>).slice(0, 100)) {
+      if (/^[a-z][a-z0-9-]{0,40}$/.test(id) && typeof icon === "string" && /^[A-Z][A-Za-z0-9]{0,40}$/.test(icon)) iconOverrides[id] = icon;
+    }
+  }
+  return {
+    wallpaperFit: enums("wallpaperFit", DEFAULT_CUSTOMIZATION.wallpaperFit) as DesktopCustomization["wallpaperFit"],
+    wallpaperImageId: typeof raw.wallpaperImageId === "string" && /^[a-z0-9-]{0,80}$/i.test(raw.wallpaperImageId) ? raw.wallpaperImageId : "",
+    desktopIconSize: clampNum(raw.desktopIconSize, 28, 72, DEFAULT_CUSTOMIZATION.desktopIconSize),
+    desktopIconSpacing: clampNum(raw.desktopIconSpacing, 72, 150, DEFAULT_CUSTOMIZATION.desktopIconSpacing),
+    desktopIconLabels: bool(raw.desktopIconLabels, DEFAULT_CUSTOMIZATION.desktopIconLabels),
+    desktopShortcutsVisible: bool(raw.desktopShortcutsVisible, DEFAULT_CUSTOMIZATION.desktopShortcutsVisible),
+    dockPosition: enums("dockPosition", DEFAULT_CUSTOMIZATION.dockPosition) as DesktopCustomization["dockPosition"],
+    dockSize: clampNum(raw.dockSize, 36, 64, DEFAULT_CUSTOMIZATION.dockSize),
+    dockSpacing: clampNum(raw.dockSpacing, 0, 14, DEFAULT_CUSTOMIZATION.dockSpacing),
+    showClock: bool(raw.showClock, DEFAULT_CUSTOMIZATION.showClock),
+    showClockDate: bool(raw.showClockDate, DEFAULT_CUSTOMIZATION.showClockDate),
+    use24HourClock: bool(raw.use24HourClock, DEFAULT_CUSTOMIZATION.use24HourClock),
+    windowRadius: clampNum(raw.windowRadius, 0, 24, DEFAULT_CUSTOMIZATION.windowRadius),
+    windowBorder: bool(raw.windowBorder, DEFAULT_CUSTOMIZATION.windowBorder),
+    windowShadow: bool(raw.windowShadow, DEFAULT_CUSTOMIZATION.windowShadow),
+    windowAnimations: bool(raw.windowAnimations, DEFAULT_CUSTOMIZATION.windowAnimations),
+    transparency: clampNum(raw.transparency, 0, 40, DEFAULT_CUSTOMIZATION.transparency),
+    blur: clampNum(raw.blur, 0, 24, DEFAULT_CUSTOMIZATION.blur),
+    desktopScale: clampNum(raw.desktopScale, 80, 125, DEFAULT_CUSTOMIZATION.desktopScale),
+    density: enums("density", DEFAULT_CUSTOMIZATION.density) as DesktopCustomization["density"],
+    iconStyle: enums("iconStyle", DEFAULT_CUSTOMIZATION.iconStyle) as DesktopCustomization["iconStyle"],
+    iconOverrides,
+    reduceMotion: bool(raw.reduceMotion, DEFAULT_CUSTOMIZATION.reduceMotion),
+  };
 }
 
 function cleanIconPositions(v: unknown): Record<string, IconPos> {
@@ -123,6 +198,9 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   const out: Partial<SystemStoreState> = {};
 
   if (THEMES.includes(p.theme as ThemeName)) out.theme = p.theme as ThemeName;
+  if (p.snakeVisualMode === "classic" || p.snakeVisualMode === "unicorn") {
+    out.snakeVisualMode = p.snakeVisualMode;
+  }
   if (STYLES.includes(p.windowStyle as WindowStyle)) {
     out.windowStyle = p.windowStyle as WindowStyle;
   }
@@ -140,7 +218,6 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   out.startupSound = bool(p.startupSound, defaults.startupSound);
   out.restoreSession = bool(p.restoreSession, defaults.restoreSession);
   out.wifi = bool(p.wifi, defaults.wifi);
-  out.bluetooth = bool(p.bluetooth, defaults.bluetooth);
   out.locked = bool(p.locked, false);
   out.welcomed = bool(p.welcomed, false);
   out.volume = clampNum(p.volume, 0, 100, defaults.volume);
@@ -148,7 +225,11 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   out.pinnedApps = idList(p.pinnedApps, DEFAULT_PINNED, 24);
   out.recentApps = idList(p.recentApps, [], MAX_RECENTS);
   out.desktopIconPos = cleanIconPositions(p.desktopIconPos);
-  out.themeOverrides = cleanOverrides(p.themeOverrides);
+  const overrides = cleanOverrides(p.themeOverrides);
+  const customization = sanitizeCustomization(p.customization);
+  if (overrides.radiusWin !== undefined) customization.windowRadius = overrides.radiusWin;
+  out.themeOverrides = overrides;
+  out.customization = customization;
   return out;
 }
 
@@ -163,6 +244,8 @@ export const useSystemStore = create<SystemStoreState>()(
       recentApps: [],
       desktopIconPos: {},
       themeOverrides: {},
+      customization: DEFAULT_CUSTOMIZATION,
+      snakeVisualMode: "classic" as const,
 
       setDesktopIconPos: (key, pos) =>
         set((s) => ({ desktopIconPos: { ...s.desktopIconPos, [key]: pos } })),
@@ -179,12 +262,15 @@ export const useSystemStore = create<SystemStoreState>()(
       setStartupSound: (v) => set({ startupSound: v }),
       setRestoreSession: (v) => set({ restoreSession: v }),
       setWifi: (v) => set({ wifi: v }),
-      setBluetooth: (v) => set({ bluetooth: v }),
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
       setBooted: (v) => set({ booted: v }),
       setLocked: (v) => set({ locked: v }),
       setWelcomed: (v) => set({ welcomed: v }),
       setThemeOverrides: (o) => set({ themeOverrides: cleanOverrides(o) }),
+      setCustomization: (customization) => set((s) => ({
+        customization: sanitizeCustomization({ ...s.customization, ...customization }),
+      })),
+      setSnakeVisualMode: (mode) => set({ snakeVisualMode: mode }),
 
       pinApp: (id) =>
         set((s) => ({ pinnedApps: s.pinnedApps.includes(id) ? s.pinnedApps : [...s.pinnedApps, id] })),
@@ -201,11 +287,13 @@ export const useSystemStore = create<SystemStoreState>()(
           recentApps: [],
           desktopIconPos: {},
           themeOverrides: {},
+          customization: DEFAULT_CUSTOMIZATION,
+          snakeVisualMode: "classic",
         }),
     }),
     {
-      name: "webos-system",
-      version: 3,
+      name: scopedStorageKey("system"),
+      version: 4,
       partialize: (state) => ({
         theme: state.theme,
         wallpaper: state.wallpaper,
@@ -220,17 +308,30 @@ export const useSystemStore = create<SystemStoreState>()(
         startupSound: state.startupSound,
         restoreSession: state.restoreSession,
         wifi: state.wifi,
-        bluetooth: state.bluetooth,
         locked: state.locked,
         welcomed: state.welcomed,
         pinnedApps: state.pinnedApps,
         recentApps: state.recentApps,
         desktopIconPos: state.desktopIconPos,
         themeOverrides: state.themeOverrides,
+        customization: state.customization,
+        snakeVisualMode: state.snakeVisualMode,
       }),
       // localStorage is untrusted input (edited by hand, an extension, or a stale
       // build), so everything read back is validated field by field.
       merge: (persisted, current) => ({ ...current, ...sanitizePersisted(persisted) }),
+      migrate: (persisted) => ({
+        ...defaults,
+        locked: false,
+        welcomed: false,
+        pinnedApps: DEFAULT_PINNED,
+        recentApps: [],
+        desktopIconPos: {},
+        themeOverrides: {},
+        snakeVisualMode: "classic" as const,
+        customization: DEFAULT_CUSTOMIZATION,
+        ...sanitizePersisted(persisted),
+      }),
     },
   ),
 );

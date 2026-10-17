@@ -16,6 +16,7 @@ interface ContextMenuProps {
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
+  const [openSubmenu, setOpenSubmenu] = useState<number | null>(null);
 
   useLayoutEffect(() => {
     const el = menuRef.current;
@@ -84,21 +85,49 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
       >
         {items.map((item, i) => {
           const ItemIcon = item.icon ? getIcon(item.icon) : null;
+          const hasSubmenu = !!item.submenu?.length;
           return (
-            <div key={i} role="none">
+            <div key={i} className="ctx-item-wrap" role="none" onMouseEnter={() => setOpenSubmenu(hasSubmenu ? i : null)}>
               {item.separatorBefore && <div className="ctx-sep" role="separator" />}
               <button
                 type="button"
                 role="menuitem"
+                aria-haspopup={hasSubmenu ? "menu" : undefined}
+                aria-expanded={hasSubmenu ? openSubmenu === i : undefined}
+                disabled={item.disabled}
                 className={cx("ctx-item", item.danger && "ctx-item--danger")}
                 onClick={() => {
-                  item.onClick();
+                  if (hasSubmenu) return setOpenSubmenu(openSubmenu === i ? null : i);
+                  item.onClick?.();
                   onClose();
                 }}
               >
                 {ItemIcon && <ItemIcon size={15} />}
-                {item.label}
+                <span>{item.label}</span>
+                {hasSubmenu && <span className="ctx-arrow" aria-hidden="true">›</span>}
               </button>
+              {hasSubmenu && openSubmenu === i && (
+                <div className="ctx-submenu" role="menu">
+                  {item.submenu!.map((child, childIndex) => {
+                    const ChildIcon = child.icon ? getIcon(child.icon) : null;
+                    return (
+                      <div key={childIndex} role="none">
+                        {child.separatorBefore && <div className="ctx-sep" role="separator" />}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={child.disabled}
+                          className={cx("ctx-item", child.danger && "ctx-item--danger")}
+                          onClick={() => { child.onClick?.(); onClose(); }}
+                        >
+                          {ChildIcon && <ChildIcon size={15} />}
+                          <span>{child.label}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         })}

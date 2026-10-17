@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Bell, BellOff, Battery, BatteryCharging, Volume2, VolumeX, Wifi, WifiOff } from "lucide-react";
 import type { AppId, ContextMenuItem, WindowState } from "../../types";
 import { appRegistry } from "../../apps/registry";
@@ -50,7 +50,7 @@ interface WinButtonProps {
 }
 
 /** One taskbar button bound to a window — with a hover thumbnail on desktop. */
-function WinButton({ win, icon, label, active, onClick, onContextMenu, previews, running }: WinButtonProps) {
+function WinButton({ win, appId, icon, label, active, onClick, onContextMenu, previews, running }: WinButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const timer = useRef<number | undefined>(undefined);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
@@ -92,7 +92,7 @@ function WinButton({ win, icon, label, active, onClick, onContextMenu, previews,
         }}
         onMouseLeave={clear}
       >
-        <AppIcon icon={icon} size={26} />
+        <AppIcon icon={icon} appId={appId} size={26} />
         {label && <span className="tb-btn__label">{label}</span>}
       </button>
       {anchor && <WindowPreview win={win} anchor={anchor} />}
@@ -100,17 +100,17 @@ function WinButton({ win, icon, label, active, onClick, onContextMenu, previews,
   );
 }
 
-function Clock() {
+function Clock({ showDate, use24Hour }: { showDate: boolean; use24Hour: boolean }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(id);
   }, []);
-  const { time, dateStr } = formatClock(now);
+  const { time, dateStr } = formatClock(now, use24Hour);
   return (
     <div className="tb-clock" aria-label={`${time}, ${dateStr}`}>
       <span className="tb-clock__time">{time}</span>
-      <span className="tb-clock__date">{dateStr}</span>
+      {showDate && <span className="tb-clock__date">{dateStr}</span>}
     </div>
   );
 }
@@ -131,6 +131,7 @@ export function Taskbar({ onToggleStart, startOpen, onToggleQuick, quickOpen }: 
   const soundEnabled = useSystemStore((s) => s.soundEnabled);
   const volume = useSystemStore((s) => s.volume);
   const dnd = useSystemStore((s) => s.doNotDisturb);
+  const customization = useSystemStore((s) => s.customization);
   const unread = useNotificationStore((s) => s.items.filter((i) => !i.read).length);
 
   const isMobile = useIsMobile();
@@ -190,7 +191,16 @@ export function Taskbar({ onToggleStart, startOpen, onToggleQuick, quickOpen }: 
   const sleepy = windows.length === 0;
 
   return (
-    <div className="taskbar" role="toolbar" aria-label="Taskbar">
+    <div
+      className="taskbar"
+      data-position={customization.dockPosition}
+      role="toolbar"
+      aria-label="Taskbar"
+      style={{
+        "--dock-size": `${customization.dockSize}px`,
+        "--dock-spacing": `${customization.dockSpacing}px`,
+      } as CSSProperties}
+    >
       <button
         type="button"
         className={cx("tb-start", startOpen && "tb-start--open", isMobile && "tb-start--cat")}
@@ -220,7 +230,7 @@ export function Taskbar({ onToggleStart, startOpen, onToggleQuick, quickOpen }: 
                 onClick={() => launchApp(id)}
                 onContextMenu={(e) => pinnedMenu(e, id)}
               >
-                <AppIcon icon={app.icon} size={26} />
+                <AppIcon icon={app.icon} appId={id} size={26} />
               </button>
             );
           }
@@ -287,11 +297,10 @@ export function Taskbar({ onToggleStart, startOpen, onToggleQuick, quickOpen }: 
           {unread > 0 && !dnd && <span className="tb-tray__badge">{unread > 9 ? "9+" : unread}</span>}
         </button>
 
-        <Clock />
+        {customization.showClock && <Clock showDate={customization.showClockDate} use24Hour={customization.use24HourClock} />}
       </div>
 
       {menu && <ContextMenu x={menu.x} y={Math.max(4, menu.y)} items={menu.items} onClose={() => setMenu(null)} />}
     </div>
   );
 }
-

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AppProps, ThemeName, WindowStyle } from "../../types";
-import { useSystemStore, DEFAULT_ACCENT, type ThemeOverrides } from "../../stores/useSystemStore";
+import { useSystemStore, DEFAULT_ACCENT, DEFAULT_CUSTOMIZATION, type ThemeOverrides } from "../../stores/useSystemStore";
 import { isHexColor } from "../../lib/security";
 import { Button, Segmented } from "../../ui";
 import "./ThemeStudio.css";
@@ -42,6 +42,7 @@ export function ThemeStudio(_props: AppProps) {
   const setAccentColor = useSystemStore((s) => s.setAccentColor);
   const setWindowStyle = useSystemStore((s) => s.setWindowStyle);
   const setThemeOverrides = useSystemStore((s) => s.setThemeOverrides);
+  const setCustomization = useSystemStore((s) => s.setCustomization);
 
   // Theme colours are read back from the live DOM once the theme attribute has been applied.
   const [base, setBase] = useState({ surface: "#191813", surface2: "#211f19" });
@@ -52,7 +53,10 @@ export function ThemeStudio(_props: AppProps) {
     return () => cancelAnimationFrame(raf);
   }, [theme, overrides.surface, overrides.surface2]);
 
-  const patch = (o: Partial<ThemeOverrides>) => setThemeOverrides({ ...overrides, ...o });
+  const patch = (o: Partial<ThemeOverrides>) => {
+    setThemeOverrides({ ...overrides, ...o });
+    if ("radiusWin" in o) setCustomization({ windowRadius: o.radiusWin ?? DEFAULT_CUSTOMIZATION.windowRadius });
+  };
   const dirty = accent !== DEFAULT_ACCENT || Object.values(overrides).some((v) => v !== undefined);
 
   return (
@@ -119,6 +123,7 @@ export function ThemeStudio(_props: AppProps) {
           onClick={() => {
             setAccentColor(DEFAULT_ACCENT);
             setThemeOverrides({});
+            setCustomization({ windowRadius: DEFAULT_CUSTOMIZATION.windowRadius });
           }}
         >
           Reset accent and overrides

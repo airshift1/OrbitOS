@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { scopedStorageKey } from "../platform/storageScope";
 
 export interface ProfileSocial {
   label: string;
@@ -83,7 +84,7 @@ export const useProfileStore = create<ProfileState>()(
       resetProfile: () => set({ profile: defaultProfile }),
     }),
     {
-      name: "webos-profile",
+      name: scopedStorageKey("profile"),
       version: 1,
       partialize: (state) => ({ profile: state.profile }),
     },

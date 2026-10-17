@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { useFileSystemStore } from "../stores/useFileSystemStore";
+import { MAX_NODE_CONTENT, sanitizePersistedFilesystem, useFileSystemStore } from "../stores/useFileSystemStore";
 
 const s = () => useFileSystemStore.getState();
 const desktopId = () => s().getChildren(s().rootId).find((n) => n.name === "Desktop")!.id;
@@ -27,5 +27,38 @@ describe("file system store rejects unsafe names", () => {
     expect(s().getNode(desktopId())!.name).toBe("Desktop");
     s().renameNode(id, "  renamed.txt ");
     expect(s().getNode(id)!.name).toBe("renamed.txt");
+  });
+
+  it("enforces protected-node and tree-integrity rules in the store", () => {
+    const root = s().rootId;
+    const desktop = desktopId();
+    const documents = s().getChildren(root).find((n) => n.name === "Documents")!.id;
+    const file = s().createNode(desktop, "integrity.txt", "file", "safe");
+    const folder = s().createNode(desktop, "integrity-folder", "folder");
+    expect(file).not.toBe("");
+    expect(folder).not.toBe("");
+    s().moveNode(folder, file);
+    expect(s().getNode(folder)!.parentId).toBe(desktop);
+    s().moveNode(folder, folder);
+    expect(s().getNode(folder)!.parentId).toBe(desktop);
+    s().moveNode(folder, documents);
+    expect(s().getNode(folder)!.parentId).toBe(documents);
+    s().deleteNode(desktop);
+    expect(s().getNode(desktop)).toBeDefined();
+    s().updateContent(file, "x".repeat(MAX_NODE_CONTENT + 1));
+    expect(s().getNode(file)!.content).toBe("safe");
+  });
+
+  it("falls back when persisted ancestry is malformed", () => {
+    const out = sanitizePersistedFilesystem({
+      rootId: "root",
+      nodes: {
+        root: { id: "root", name: "/", type: "folder", parentId: null, createdAt: 1, updatedAt: 1 },
+        a: { id: "a", name: "A", type: "folder", parentId: "b", createdAt: 1, updatedAt: 1 },
+        b: { id: "b", name: "B", type: "folder", parentId: "a", createdAt: 1, updatedAt: 1 },
+      },
+    });
+    expect(out.nodes[out.rootId].name).toBe("/");
+    expect(Object.values(out.nodes).some((node) => node.name === "Desktop")).toBe(true);
   });
 });
