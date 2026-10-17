@@ -1,7 +1,8 @@
-import type { BoardSize, Direction, Point } from "./engine";
+import { DEFAULT_BOARD, type BoardSize, type Direction, type Point } from "./engine";
 import { addFoodGrowth } from "./motion.js";
 
 export type Difficulty = "easy" | "normal" | "hard";
+export type AIDifficulty = "easy" | "normal" | "hard" | "expert";
 export type LocalStatus = "ready" | "playing" | "paused" | "gameover" | "won";
 
 export const DIFFICULTIES: Record<Difficulty, { label: string; stepMs: number; speedupMs: number; minimumMs: number }> = {
@@ -75,7 +76,7 @@ function spawnFood(snakes: Point[][], board: BoardSize, random: () => number): P
 export function createClassicState(
   difficulty: Difficulty = "normal",
   random = Math.random,
-  board: BoardSize = { columns: 60, rows: 40 },
+  board: BoardSize = DEFAULT_BOARD,
 ): ClassicState {
   const head = { x: Math.floor(board.columns / 2), y: Math.floor(board.rows / 2) };
   const snake = [head, { x: head.x - 1, y: head.y }, { x: head.x - 2, y: head.y }];
@@ -122,7 +123,7 @@ export function advanceClassic(state: ClassicState, random = Math.random, boosti
   };
 }
 
-export function createVersusState(random = Math.random, board: BoardSize = { columns: 60, rows: 40 }): VersusState {
+export function createVersusState(random = Math.random, board: BoardSize = DEFAULT_BOARD): VersusState {
   const first = { x: Math.floor(board.columns / 2) - 6, y: Math.floor(board.rows / 2) };
   const second = { x: Math.floor(board.columns / 2) + 6, y: Math.floor(board.rows / 2) };
   const playerOne: VersusPlayer = {

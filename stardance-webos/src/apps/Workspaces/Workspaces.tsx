@@ -19,6 +19,7 @@ import {
 import { WorkspaceWidget } from "@projectstorm/react-workspaces-core";
 import type { AppProps } from "../../types";
 import { appList } from "../registry";
+import { useSystemStore } from "../../stores/useSystemStore";
 import { notify } from "../../stores/useNotificationStore";
 import { Button } from "../../ui";
 import { AppPanelModel } from "./AppPanel";
@@ -56,13 +57,14 @@ export default function Workspaces(_props: AppProps) {
   const [locked, setLocked] = useState(false);
   const [floating, setFloating] = useState(false);
   const [floatCount, setFloatCount] = useState(0);
+  const uninstalledApps = useSystemStore((state) => state.uninstalledApps);
 
   useEffect(() => () => model.dispose(), [model]);
   useEffect(() => {
     engine.setLocked(locked);
   }, [engine, locked]);
 
-  const panelApps = appList.filter((a) => a.panelSafe);
+  const panelApps = appList.filter((a) => a.panelSafe && !uninstalledApps.includes(a.id));
 
   function add(appId: (typeof panelApps)[number]["id"]) {
     if (floating) {

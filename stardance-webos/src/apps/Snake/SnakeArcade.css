@@ -89,8 +89,11 @@
   border-radius: 12px;
   background: var(--color-surface);
   box-shadow: var(--shadow-window);
+  max-height: min(75cqh, 420px);
+  overflow-y: auto;
 }
 .snake-arcade__settings-panel > label { display: grid; gap: 5px; color: var(--snake-muted); font-size: 10px; }
+.snake-arcade__settings-panel > label small { color: var(--snake-muted); font-size: 9px; }
 .snake-arcade__settings-panel select {
   min-height: 34px;
   padding: 0 8px;
@@ -140,7 +143,7 @@
 
 .snake-arcade__cards {
   display: grid;
-  width: min(100% - 36px, 870px);
+  width: min(100% - 36px, 980px);
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin: 0 auto;
@@ -195,6 +198,7 @@
 .snake-arcade__card-foot button svg { transform: rotate(180deg); }
 .snake-arcade__card--unicorn { --snake-accent: #c66eb5; }
 .snake-arcade__card--versus { --snake-accent: #ec718d; }
+.snake-arcade__card--ai-battle { --snake-accent: #8b6fd1; }
 .snake-arcade__card--online { --snake-accent: #5898d9; }
 .snake-arcade__menu-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; margin: auto 12px 12px; padding-top: 18px; color: var(--snake-muted); font-size: 9px; }
 .snake-arcade__menu-foot > span { display: inline-flex; align-items: center; gap: 6px; }
@@ -231,10 +235,13 @@
 .snake-arcade__versus-score strong { min-width: 24px; text-align: center; }
 .snake-arcade__versus-mid { color: var(--snake-muted); font-size: 9px; font-weight: 800; letter-spacing: .14em; }
 
-.snake-arcade__stage { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; padding: 9px 14px; }
+.snake-arcade__stage { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; padding: 3px 5px; }
 .snake-arcade__board {
   width: min(100%, calc(72cqh * var(--snake-board-ratio, 1.5)));
+  height: auto;
+  max-width: 100%;
   max-height: 100%;
+  aspect-ratio: var(--snake-board-ratio, 1.5);
   outline: none;
 }
 .snake-arcade__board:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--snake-accent) 40%, transparent), 0 9px 24px #1112; }
@@ -263,6 +270,10 @@
 .snake-local__head i::after { top: 0; left: 7px; }
 .snake-local__head--two i { left: auto; right: 30%; }
 .snake-local__head--two i::after { left: auto; right: 7px; }
+.snake-arcade__hud--ai { gap: clamp(8px, 2.5cqi, 24px); }
+.snake-arcade__ai-count strong { font-size: 15px; }
+.snake-ai__segment { z-index: 2; margin: 1px; border: 1px solid color-mix(in srgb, var(--local-snake-color) 72%, #202938); border-radius: 38%; background: linear-gradient(145deg, color-mix(in srgb, var(--local-snake-color) 76%, white), var(--local-snake-color)); box-shadow: inset 0 1px 1px #ffffff88, 0 1px 3px #0003; }
+.snake-ai__head { z-index: 4; overflow: visible; border: 0; background: transparent; box-shadow: none; }
 .snake-arcade__overlay { background: color-mix(in srgb, var(--snake-panel) 83%, transparent); }
 .snake-arcade__overlay h2 { max-width: 94%; }
 .snake-arcade__overlay p { max-width: 390px; }
@@ -296,7 +307,7 @@
   .snake-arcade__card-foot small { max-width: 120px; line-height: 1.4; }
   .snake-arcade__intro { margin-top: 20px; }
   .snake-arcade__stage { padding: 4px 8px; }
-  .snake-arcade__board { width: min(100%, calc(66cqh * var(--snake-board-ratio, 1.5))); }
+  .snake-arcade__board { width: min(100%, calc(72cqh * var(--snake-board-ratio, 1.5))); height: auto; }
   .snake-arcade__bottom { min-height: 66px; padding: 6px 9px 9px; gap: 7px; }
   .snake-arcade__boost { min-height: 40px; padding-inline: 8px; font-size: 8px; }
   .snake-arcade__footnote { max-width: 145px; gap: 5px; }

@@ -18,9 +18,15 @@ export interface ThemeOverrides {
   radiusSm?: number;
 }
 
+export const DEFAULT_THEME_OVERRIDES: Pick<ThemeOverrides, "radiusWin" | "radiusSm"> = {
+  radiusWin: 24,
+  radiusSm: 2,
+};
+
 export type SnakeVisualMode = "classic" | "unicorn";
 
 const MAX_RECENTS = 6;
+export const REQUIRED_APP_IDS: readonly AppId[] = ["settings", "file-explorer", "orbit-store", "launcher"];
 
 interface SystemStoreState extends SystemSettings {
   booted: boolean;
@@ -28,6 +34,8 @@ interface SystemStoreState extends SystemSettings {
   pinnedApps: AppId[];
   /** Most-recently launched apps, newest first. */
   recentApps: AppId[];
+  /** Apps removed from the user's OrbitOS library; code remains bundled. */
+  uninstalledApps: AppId[];
   /** Saved desktop icon positions, keyed by icon key ("app-<id>" or fs node id). */
   desktopIconPos: Record<string, IconPos>;
   themeOverrides: ThemeOverrides;
@@ -58,10 +66,12 @@ interface SystemStoreState extends SystemSettings {
   pinApp: (id: AppId) => void;
   unpinApp: (id: AppId) => void;
   pushRecent: (id: AppId) => void;
+  setAppInstalled: (id: AppId, installed: boolean) => void;
   resetSettings: () => void;
 }
 
-export const DEFAULT_ACCENT = "#e0653a";
+export const DEFAULT_ACCENT = "#091c1a";
+const PREVIOUS_DEFAULT_ACCENT = "#e0653a";
 const LEGACY_ACCENT = "#00c8f0";
 
 const defaults: SystemSettings = {
@@ -93,7 +103,7 @@ export const DEFAULT_CUSTOMIZATION: DesktopCustomization = {
   showClock: true,
   showClockDate: true,
   use24HourClock: false,
-  windowRadius: 4,
+  windowRadius: 24,
   windowBorder: true,
   windowShadow: true,
   windowAnimations: true,
@@ -222,8 +232,9 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   out.welcomed = bool(p.welcomed, false);
   out.volume = clampNum(p.volume, 0, 100, defaults.volume);
   out.brightness = clampNum(p.brightness, 20, 100, defaults.brightness);
-  out.pinnedApps = idList(p.pinnedApps, DEFAULT_PINNED, 24);
-  out.recentApps = idList(p.recentApps, [], MAX_RECENTS);
+  out.uninstalledApps = idList(p.uninstalledApps, [], 25).filter((id) => !REQUIRED_APP_IDS.includes(id));
+  out.pinnedApps = idList(p.pinnedApps, DEFAULT_PINNED, 24).filter((id) => !out.uninstalledApps?.includes(id));
+  out.recentApps = idList(p.recentApps, [], MAX_RECENTS).filter((id) => !out.uninstalledApps?.includes(id));
   out.desktopIconPos = cleanIconPositions(p.desktopIconPos);
   const overrides = cleanOverrides(p.themeOverrides);
   const customization = sanitizeCustomization(p.customization);
@@ -231,6 +242,27 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   out.themeOverrides = overrides;
   out.customization = customization;
   return out;
+}
+
+export function migrateAppearanceDefaults(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const persisted = raw as Record<string, unknown>;
+  const migrated = { ...persisted };
+  if (persisted.accentColor === PREVIOUS_DEFAULT_ACCENT) {
+    migrated.accentColor = DEFAULT_ACCENT;
+  }
+
+  const overrides = cleanOverrides(persisted.themeOverrides);
+  if (overrides.radiusWin === 4) overrides.radiusWin = DEFAULT_THEME_OVERRIDES.radiusWin;
+  migrated.themeOverrides = { ...DEFAULT_THEME_OVERRIDES, ...overrides };
+
+  const customization = persisted.customization && typeof persisted.customization === "object"
+    ? persisted.customization as Record<string, unknown>
+    : {};
+  if (customization.windowRadius === undefined || customization.windowRadius === 4) {
+    migrated.customization = { ...customization, windowRadius: DEFAULT_CUSTOMIZATION.windowRadius };
+  }
+  return migrated;
 }
 
 export const useSystemStore = create<SystemStoreState>()(
@@ -242,8 +274,9 @@ export const useSystemStore = create<SystemStoreState>()(
       welcomed: false,
       pinnedApps: DEFAULT_PINNED,
       recentApps: [],
+      uninstalledApps: [],
       desktopIconPos: {},
-      themeOverrides: {},
+      themeOverrides: { ...DEFAULT_THEME_OVERRIDES },
       customization: DEFAULT_CUSTOMIZATION,
       snakeVisualMode: "classic" as const,
 
@@ -279,6 +312,18 @@ export const useSystemStore = create<SystemStoreState>()(
         set((s) => ({
           recentApps: [id, ...s.recentApps.filter((a) => a !== id)].slice(0, MAX_RECENTS),
         })),
+      setAppInstalled: (id, installed) =>
+        set((s) => {
+          if (installed) {
+            return { uninstalledApps: s.uninstalledApps.filter((appId) => appId !== id) };
+          }
+          if (REQUIRED_APP_IDS.includes(id) || s.uninstalledApps.includes(id)) return s;
+          return {
+            uninstalledApps: [...s.uninstalledApps, id],
+            pinnedApps: s.pinnedApps.filter((appId) => appId !== id),
+            recentApps: s.recentApps.filter((appId) => appId !== id),
+          };
+        }),
 
       resetSettings: () =>
         set({
@@ -286,14 +331,14 @@ export const useSystemStore = create<SystemStoreState>()(
           pinnedApps: DEFAULT_PINNED,
           recentApps: [],
           desktopIconPos: {},
-          themeOverrides: {},
+          themeOverrides: { ...DEFAULT_THEME_OVERRIDES },
           customization: DEFAULT_CUSTOMIZATION,
           snakeVisualMode: "classic",
         }),
     }),
     {
       name: scopedStorageKey("system"),
-      version: 4,
+      version: 6,
       partialize: (state) => ({
         theme: state.theme,
         wallpaper: state.wallpaper,
@@ -312,6 +357,7 @@ export const useSystemStore = create<SystemStoreState>()(
         welcomed: state.welcomed,
         pinnedApps: state.pinnedApps,
         recentApps: state.recentApps,
+        uninstalledApps: state.uninstalledApps,
         desktopIconPos: state.desktopIconPos,
         themeOverrides: state.themeOverrides,
         customization: state.customization,
@@ -320,17 +366,18 @@ export const useSystemStore = create<SystemStoreState>()(
       // localStorage is untrusted input (edited by hand, an extension, or a stale
       // build), so everything read back is validated field by field.
       merge: (persisted, current) => ({ ...current, ...sanitizePersisted(persisted) }),
-      migrate: (persisted) => ({
+      migrate: (persisted, version) => ({
         ...defaults,
         locked: false,
         welcomed: false,
         pinnedApps: DEFAULT_PINNED,
         recentApps: [],
+        uninstalledApps: [],
         desktopIconPos: {},
-        themeOverrides: {},
+        themeOverrides: { ...DEFAULT_THEME_OVERRIDES },
         snakeVisualMode: "classic" as const,
         customization: DEFAULT_CUSTOMIZATION,
-        ...sanitizePersisted(persisted),
+        ...sanitizePersisted(version < 5 ? migrateAppearanceDefaults(persisted) : persisted),
       }),
     },
   ),

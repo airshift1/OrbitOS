@@ -11,6 +11,7 @@ import type { IconName } from "@fortawesome/free-solid-svg-icons";
 import type { AppId } from "../../types";
 import { appRegistry } from "../registry";
 import { AppErrorBoundary } from "../../shell/Window/AppErrorBoundary";
+import { useSystemStore } from "../../stores/useSystemStore";
 
 /**
  * Bridges react-workspaces to the OS app registry: a workspace panel whose
@@ -61,7 +62,9 @@ export class AppPanelModel extends DefaultWorkspacePanelModel {
 
 function AppPanelContent({ model }: { model: AppPanelModel }) {
   const app = appRegistry[model.appId];
+  const unavailable = useSystemStore((state) => state.uninstalledApps.includes(model.appId));
   if (!app) return <div className="wsapp-missing">Unknown app “{model.appId}”</div>;
+  if (unavailable) return <div className="wsapp-missing">{app.name} was removed from your OrbitOS library. Re-add it in Orbit Store.</div>;
   const Component = app.component;
   return (
     <div className="wsapp-panel">

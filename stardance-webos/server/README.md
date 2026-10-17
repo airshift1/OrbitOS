@@ -2,6 +2,8 @@
 
 This Node.js service provides authoritative room state over WebSockets. It is separate from OrbitOS's static Vercel frontend; deployment of this service and configuration of the frontend are required before multiplayer is available to visitors.
 
+New rooms use a server-controlled **120 × 80** world. Online arena dimensions are not client-selectable: the server validates all movement, collisions, food, growth, and scores against this fixed room size.
+
 ## Run OrbitOS and the server on Windows
 
 Open two PowerShell windows in the `stardance-webos` project directory. Install dependencies once:

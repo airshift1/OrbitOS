@@ -38,6 +38,8 @@ export type AppId =
   | "orbit-depths"
   | "mortal-kombat-mobile"
   | "launcher"
+  | "orbit-store"
+  | "assistant"
   | "workspaces";
 
 export type AppCategory = "System" | "Productivity" | "Internet" | "Media" | "Tools";

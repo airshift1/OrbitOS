@@ -74,6 +74,7 @@ export function FileExplorer({ launchProps }: AppProps) {
     : allChildren;
   const currentPath = getPath(currentFolderId);
   const currentNode = getNode(currentFolderId);
+  const managedFolder = isSystemAppsFolder(currentNode, rootId);
 
   const topFolders = getChildren(rootId).filter((n) => n.type === "folder");
 
@@ -161,6 +162,7 @@ export function FileExplorer({ launchProps }: AppProps) {
 
   function handleEmptyContext(e: React.MouseEvent) {
     e.preventDefault();
+    if (managedFolder) return;
     const items: ContextMenuItem[] = [
       {
         label: "New Folder",
@@ -179,13 +181,13 @@ export function FileExplorer({ launchProps }: AppProps) {
   return (
     <div className="fx">
       <div className="fx__toolbar">
-        <button className="fx__btn" disabled={historyIndex <= 0} onClick={goBack}>
+        <button className="fx__btn" aria-label="Back" title="Back" disabled={historyIndex <= 0} onClick={goBack}>
           <ChevronLeft size={16} />
         </button>
-        <button className="fx__btn" disabled={historyIndex >= history.length - 1} onClick={goForward}>
+        <button className="fx__btn" aria-label="Forward" title="Forward" disabled={historyIndex >= history.length - 1} onClick={goForward}>
           <ChevronRight size={16} />
         </button>
-        <button className="fx__btn" disabled={!currentNode?.parentId} onClick={goUp}>
+        <button className="fx__btn" aria-label="Up one folder" title="Up one folder" disabled={!currentNode?.parentId} onClick={goUp}>
           <ArrowUp size={16} />
         </button>
         <div className="fx__path">{currentPath}</div>
@@ -201,10 +203,10 @@ export function FileExplorer({ launchProps }: AppProps) {
             <List size={15} />
           </button>
         </div>
-        <button className="fx__btn" onClick={() => createNode(currentFolderId, "New Folder", "folder")}>
+        <button className="fx__btn" aria-label="New folder" title={managedFolder ? "System Apps is managed by OrbitOS" : "New folder"} disabled={managedFolder} onClick={() => createNode(currentFolderId, "New Folder", "folder")}>
           <FolderPlus size={16} />
         </button>
-        <button className="fx__btn" onClick={() => createNode(currentFolderId, "untitled.txt", "file", "")}>
+        <button className="fx__btn" aria-label="New file" title={managedFolder ? "System Apps is managed by OrbitOS" : "New file"} disabled={managedFolder} onClick={() => createNode(currentFolderId, "untitled.txt", "file", "")}>
           <FilePlus size={16} />
         </button>
       </div>
@@ -274,7 +276,14 @@ export function FileExplorer({ launchProps }: AppProps) {
               <button
                 key={node.id}
                 className={cx("fx__item", dragOverId === node.id && "fx__item--dragover")}
+                aria-label={`${displayName}, ${kind}`}
                 onDoubleClick={() => handleDoubleClick(node.id)}
+                onKeyDown={(event) => {
+                  if ((event.key === "Enter" || event.key === " ") && !event.repeat) {
+                    event.preventDefault();
+                    handleDoubleClick(node.id);
+                  }
+                }}
                 onContextMenu={(e) => handleItemContext(e, node.id)}
                 draggable={!isProtectedNode(node, rootId) && !isSystemAppsFolder(currentNode, rootId)}
                 onDragStart={(e) => startNodeDrag(e, node.id)}
@@ -292,8 +301,8 @@ export function FileExplorer({ launchProps }: AppProps) {
       </div>
 
       <div className="fx__status">
-        {children.length} item{children.length === 1 ? "" : "s"}
-        {query && ` (filtered from ${allChildren.length})`}
+        <span>{children.length} item{children.length === 1 ? "" : "s"}{query && ` (filtered from ${allChildren.length})`}</span>
+        <span className="fx__storage-note" title="This is OrbitOS virtual storage saved in this browser, not the host computer's file system.">Virtual files · saved in this browser</span>
       </div>
 
       {menu && (

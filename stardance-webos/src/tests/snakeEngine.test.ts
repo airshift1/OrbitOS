@@ -41,9 +41,9 @@ describe("Snake game engine", () => {
     expect(game.food!.y).toBeLessThan(BOARD_ROWS);
   });
 
-  it("uses a configurable 60 by 40 world and checks collisions against that world", () => {
+  it("uses the expanded configurable 120 by 80 world and checks collisions against that world", () => {
     const game = createGameState(constantRandom);
-    expect(game.board).toEqual({ columns: 60, rows: 40 });
+    expect(game.board).toEqual({ columns: 120, rows: 80 });
     const smaller = createGameState(constantRandom, { columns: 12, rows: 8 });
     expect(smaller.board).toEqual({ columns: 12, rows: 8 });
     expect(smaller.snake[0]).toEqual({ x: 6, y: 4 });

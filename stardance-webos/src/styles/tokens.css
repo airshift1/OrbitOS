@@ -1,7 +1,7 @@
 /* ------------------------------------------------------------------
    Design tokens — the only place colours, type and radii are defined.
 
-   Two primary tones (ink + paper) and one accent (signal orange).
+   Two primary tones (ink + paper) and one deep teal accent.
    Themes swap which tone is the ground; the accent stays the same hue.
      orbit    "Ink"       warm dark (default)
      light    "Paper"     warm light
@@ -12,13 +12,13 @@
 :root,
 :root[data-theme="orbit"] {
   --color-bg: #12110e;
-  --color-surface: #191813;
-  --color-surface-2: #211f19;
+  --color-surface: #081a25;
+  --color-surface-2: #040101;
   --color-surface-hover: #2a2820;
   --color-titlebar: #1d1b16;
   --color-text: #eae6dc;
   --color-text-dim: #a8a396;
-  --color-accent: #e0653a;
+  --color-accent: #091c1a;
   --color-on-accent: #16110d;
   --color-danger: #ee7a68;
   --color-success: #86b98f;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AppProps, ThemeName, WindowStyle } from "../../types";
-import { useSystemStore, DEFAULT_ACCENT, DEFAULT_CUSTOMIZATION, type ThemeOverrides } from "../../stores/useSystemStore";
+import { useSystemStore, DEFAULT_ACCENT, DEFAULT_CUSTOMIZATION, DEFAULT_THEME_OVERRIDES, type ThemeOverrides } from "../../stores/useSystemStore";
 import { isHexColor } from "../../lib/security";
 import { Button, Segmented } from "../../ui";
 import "./ThemeStudio.css";
@@ -57,7 +57,11 @@ export function ThemeStudio(_props: AppProps) {
     setThemeOverrides({ ...overrides, ...o });
     if ("radiusWin" in o) setCustomization({ windowRadius: o.radiusWin ?? DEFAULT_CUSTOMIZATION.windowRadius });
   };
-  const dirty = accent !== DEFAULT_ACCENT || Object.values(overrides).some((v) => v !== undefined);
+  const dirty = accent !== DEFAULT_ACCENT
+    || overrides.surface !== undefined
+    || overrides.surface2 !== undefined
+    || overrides.radiusWin !== DEFAULT_THEME_OVERRIDES.radiusWin
+    || overrides.radiusSm !== DEFAULT_THEME_OVERRIDES.radiusSm;
 
   return (
     <div className="ts">
@@ -122,7 +126,7 @@ export function ThemeStudio(_props: AppProps) {
           disabled={!dirty}
           onClick={() => {
             setAccentColor(DEFAULT_ACCENT);
-            setThemeOverrides({});
+            setThemeOverrides({ ...DEFAULT_THEME_OVERRIDES });
             setCustomization({ windowRadius: DEFAULT_CUSTOMIZATION.windowRadius });
           }}
         >

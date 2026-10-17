@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import type { AppProps } from "../../types";
 import { useSystemStore } from "../../stores/useSystemStore";
 import { useWindowStore } from "../../stores/useWindowStore";
@@ -6,12 +6,11 @@ import { ClassicSnakeHead, Cupcake, UnicornHead } from "./SnakeArt";
 import { readUnicornSkin, saveUnicornSkin, UNICORN_SKINS, type UnicornSkin } from "./unicornSkins";
 import { SnakeMultiplayer } from "./SnakeMultiplayer";
 import { PreferenceControls, SnakeArcadeMenu, SnakeLocalGame, type SnakeMode } from "./SnakeArcade";
-import { readSnakePreferences, type SnakePreferences } from "./snakePreferences";
+import { boardForArena, readSnakePreferences, type SnakePreferences } from "./snakePreferences";
 import {
   advanceGame,
   CELEBRATION_DURATION_MS,
   createGameState,
-  DEFAULT_BOARD,
   directionFromSwipe,
   getStepMs,
   pauseGame,
@@ -29,6 +28,7 @@ import {
 import "./Snake.css";
 import { appendHeadHistory, interpolateSnake } from "./motion";
 import { useSnakeAnimation } from "./useSnakeAnimation";
+import { useSnakeViewport } from "./useSnakeViewport";
 
 interface Sprinkle {
   id: number;
@@ -61,9 +61,10 @@ export function Snake({ windowId }: AppProps) {
   const [playMode, setPlayMode] = useState<SnakeMode | "menu" | "unicorn-select">("menu");
   const [selectedSkin, setSelectedSkin] = useState<UnicornSkin>(readUnicornSkin);
   const [preferences, setPreferences] = useState<SnakePreferences>(readSnakePreferences);
+  const arena = useMemo(() => boardForArena(preferences.arenaSize), [preferences.arenaSize]);
   const windowState = useWindowStore((store) => store.windows.find((item) => item.id === windowId));
   const toggleMaximize = useWindowStore((store) => store.toggleMaximize);
-  const [game, setGame] = useState<GameState>(() => createGameState(Math.random, DEFAULT_BOARD));
+  const [game, setGame] = useState<GameState>(() => createGameState(Math.random, arena));
   const [bestScore, setBestScore] = useState(() => {
     try {
       const saved = Number(localStorage.getItem(UNICORN_BEST_KEY));
@@ -75,6 +76,8 @@ export function Snake({ windowId }: AppProps) {
   const [sprinkles, setSprinkles] = useState<Sprinkle[]>([]);
   const gameRef = useRef(game);
   const boardRef = useRef<HTMLDivElement>(null);
+  const playAreaRef = useRef<HTMLDivElement>(null);
+  const viewport = useSnakeViewport(playAreaRef, playMode === "unicorn");
   const swipeStart = useRef<Point | null>(null);
   const historyRef = useRef<Point[]>([...game.snake]);
   const boostingRef = useRef(false);
@@ -85,9 +88,9 @@ export function Snake({ windowId }: AppProps) {
   const style = {
     "--snake-accent": accentColor,
     "--snake-move-duration": `${Math.max(80, getStepMs(game.score) * 0.7)}ms`,
-    "--snake-viewport-columns": Math.min(game.board.columns, VIEWPORT_COLUMNS),
-    "--snake-viewport-rows": Math.min(game.board.rows, VIEWPORT_ROWS),
-    "--snake-board-ratio": Math.min(game.board.columns, VIEWPORT_COLUMNS) / Math.min(game.board.rows, VIEWPORT_ROWS),
+    "--snake-viewport-columns": Math.min(game.board.columns, viewport.columns),
+    "--snake-viewport-rows": Math.min(game.board.rows, viewport.rows),
+    "--snake-board-ratio": Math.min(game.board.columns, viewport.columns) / Math.min(game.board.rows, viewport.rows),
   } as CSSProperties;
 
   const commit = useCallback((next: GameState) => {
@@ -102,11 +105,11 @@ export function Snake({ windowId }: AppProps) {
     setBoostActive(false);
     boostingRef.current = false;
     setBoosting(false);
-    const restarted = restartGame(Math.random, DEFAULT_BOARD);
+    const restarted = restartGame(Math.random, arena);
     historyRef.current = [...restarted.snake];
     commit(restarted);
     boardRef.current?.focus();
-  }, [commit]);
+  }, [arena, commit]);
 
   const burst = useCallback((point: Point, amount = 16) => {
     const id = particleId.current++;
@@ -247,8 +250,8 @@ export function Snake({ windowId }: AppProps) {
   const rootClassName = `snake ${modeClass} snake--unicorn-skin-${selectedSkin} snake--theme-${theme}`;
   const nextHead = renderedSnake[0] ?? game.snake[0];
   const isWin = game.status === "won";
-  const viewColumns = Math.min(game.board.columns, VIEWPORT_COLUMNS);
-  const viewRows = Math.min(game.board.rows, VIEWPORT_ROWS);
+  const viewColumns = Math.min(game.board.columns, viewport.columns);
+  const viewRows = Math.min(game.board.rows, viewport.rows);
   const camera = {
     x: Math.max(0, Math.min(game.board.columns - viewColumns, nextHead.x - Math.floor(viewColumns / 2))),
     y: Math.max(0, Math.min(game.board.rows - viewRows, nextHead.y - Math.floor(viewRows / 2))),
@@ -318,7 +321,7 @@ export function Snake({ windowId }: AppProps) {
     );
   }
 
-  if (playMode === "classic" || playMode === "versus") {
+  if (playMode === "classic" || playMode === "versus" || playMode === "ai-battle") {
     return (
       <SnakeLocalGame
         mode={playMode}
@@ -362,10 +365,11 @@ export function Snake({ windowId }: AppProps) {
         <div className="snake__length"><span>Length</span><strong>{game.snake.length}</strong></div>
       </div>
 
-      <div className="snake__playarea">
+      <div ref={playAreaRef} className="snake__playarea">
         <div
           ref={boardRef}
           className="snake__board"
+          style={{ width: viewport.width || undefined, height: viewport.height || undefined }}
           tabIndex={0}
           role="application"
           aria-label={`Snake game board. ${game.score} ${visualMode === "unicorn" ? "cupcakes collected" : "points"}. Use arrow keys or WASD to steer.`}

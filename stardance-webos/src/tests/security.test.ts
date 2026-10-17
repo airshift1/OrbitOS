@@ -143,6 +143,9 @@ describe("deployment headers", () => {
     const csp = SECURITY_HEADERS["Content-Security-Policy"];
     expect(csp).toContain("script-src 'self';");
     expect(csp).not.toMatch(/script-src[^;]*unsafe/);
+    expect(csp).toContain("connect-src 'self' wss: http://localhost:*");
+    expect(csp).toContain("http://127.0.0.1:*");
+    expect(csp).not.toContain("connect-src 'self' http:");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
   });

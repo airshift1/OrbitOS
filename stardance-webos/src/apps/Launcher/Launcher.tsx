@@ -16,13 +16,14 @@ export function Launcher(_props: AppProps) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<Filter>("All");
   const pinnedApps = useSystemStore((s) => s.pinnedApps);
+  const uninstalledApps = useSystemStore((s) => s.uninstalledApps);
   const pinApp = useSystemStore((s) => s.pinApp);
   const unpinApp = useSystemStore((s) => s.unpinApp);
 
   const apps = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return appList.filter((a) => (cat === "All" || a.category === cat) && (!q || a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)));
-  }, [query, cat]);
+    return appList.filter((a) => !uninstalledApps.includes(a.id) && (cat === "All" || a.category === cat) && (!q || a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q)));
+  }, [query, cat, uninstalledApps]);
 
   return (
     <div className="launcher">

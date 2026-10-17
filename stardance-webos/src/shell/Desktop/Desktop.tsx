@@ -91,6 +91,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
   const wallpaper = useSystemStore((s) => s.wallpaper);
   const customization = useSystemStore((s) => s.customization);
   const pinnedApps = useSystemStore((s) => s.pinnedApps);
+  const uninstalledApps = useSystemStore((s) => s.uninstalledApps);
   const pinApp = useSystemStore((s) => s.pinApp);
   const unpinApp = useSystemStore((s) => s.unpinApp);
   const desktopIconPos = useSystemStore((s) => s.desktopIconPos);
@@ -143,7 +144,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
   {
     let flowIndex = 0;
     const keys = [
-      ...APP_SHORTCUTS.map((id) => `app-${id}`),
+      ...APP_SHORTCUTS.filter((id) => !uninstalledApps.includes(id)).map((id) => `app-${id}`),
       ...desktopFiles.map((n) => n.id),
     ];
     for (const key of keys) {
@@ -262,7 +263,7 @@ export function Desktop({ children }: { children?: ReactNode }) {
       onDrop={handleDesktopDrop}
     >
       {customization.desktopShortcutsVisible && <div className="desktop__icons" data-icon-style={customization.iconStyle}>
-        {APP_SHORTCUTS.map((appId) => {
+        {APP_SHORTCUTS.filter((appId) => !uninstalledApps.includes(appId)).map((appId) => {
           const app = appRegistry[appId];
           const pos = iconPositions[`app-${app.id}`];
           return (

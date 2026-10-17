@@ -384,6 +384,7 @@
   padding: 0 16px 14px;
 }
 .snake-multi__game { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+.snake-multi__stage { display: flex; min-width: 0; min-height: 0; flex: 1; align-items: center; justify-content: center; overflow: hidden; }
 .snake-multi__scorebar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 7px; color: var(--snake-muted); font-size: 10px; }
 .snake-multi__scorebar strong { color: var(--snake-ink); font-size: 12px; }
 .snake-multi__board { align-self: center; width: min(100%, 75cqh); flex: 0 1 auto; background-color: var(--snake-cell-a); }

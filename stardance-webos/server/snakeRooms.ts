@@ -3,8 +3,8 @@ import type { Direction, Point } from "../src/apps/Snake/engine.js";
 import { addFoodGrowth } from "../src/apps/Snake/motion.js";
 import type { JoinResult, MultiplayerStatus, PublicRoom, RoomSnapshot, RoomVisibility } from "../src/apps/Snake/multiplayerTypes.js";
 
-export const WORLD_COLUMNS = 60;
-export const WORLD_ROWS = 40;
+export const WORLD_COLUMNS = 120;
+export const WORLD_ROWS = 80;
 export const ROOM_CAPACITY = 8;
 export const WINNING_SCORE = 67;
 export const DISCONNECT_GRACE_MS = 45_000;
@@ -58,14 +58,14 @@ const OPPOSITE: Record<Direction, Direction> = {
 };
 const PLAYER_COLORS = ["#a783e6", "#35a9ce", "#ed7199", "#56ab78", "#e6a53d", "#787be0", "#d57bc2", "#d16e5c"];
 const SPAWNS: Array<{ x: number; y: number; direction: Direction }> = [
-  { x: 30, y: 20, direction: "left" },
-  { x: 40, y: 23, direction: "right" },
-  { x: 30, y: 28, direction: "down" },
-  { x: 40, y: 12, direction: "up" },
-  { x: 20, y: 10, direction: "left" },
-  { x: 48, y: 30, direction: "right" },
-  { x: 12, y: 30, direction: "left" },
-  { x: 48, y: 10, direction: "right" },
+  { x: 60, y: 40, direction: "left" },
+  { x: 80, y: 43, direction: "right" },
+  { x: 60, y: 58, direction: "down" },
+  { x: 80, y: 22, direction: "up" },
+  { x: 40, y: 18, direction: "left" },
+  { x: 98, y: 62, direction: "right" },
+  { x: 22, y: 62, direction: "left" },
+  { x: 98, y: 18, direction: "right" },
 ];
 
 export function isDirection(value: unknown): value is Direction {

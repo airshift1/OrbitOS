@@ -5,7 +5,7 @@ export interface BoardSize {
   rows: number;
 }
 
-export const DEFAULT_BOARD: BoardSize = { columns: 60, rows: 40 };
+export const DEFAULT_BOARD: BoardSize = { columns: 120, rows: 80 };
 export const BOARD_COLUMNS = DEFAULT_BOARD.columns;
 export const BOARD_ROWS = DEFAULT_BOARD.rows;
 export const VIEWPORT_COLUMNS = 24;

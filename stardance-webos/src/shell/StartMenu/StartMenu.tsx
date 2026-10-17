@@ -23,6 +23,7 @@ export function StartMenu({ open, onClose }: Props) {
   const { user, signOut } = useIdentity();
   const pinnedApps = useSystemStore((s) => s.pinnedApps);
   const recentApps = useSystemStore((s) => s.recentApps);
+  const uninstalledApps = useSystemStore((s) => s.uninstalledApps);
   const pinApp = useSystemStore((s) => s.pinApp);
   const unpinApp = useSystemStore((s) => s.unpinApp);
 
@@ -83,9 +84,9 @@ export function StartMenu({ open, onClose }: Props) {
     });
   }
 
-  const pinned = pinnedApps.filter((id) => appRegistry[id]);
-  const others = appList.filter((a) => !pinnedApps.includes(a.id));
-  const recents = recentApps.filter((id) => appRegistry[id]).slice(0, 4);
+  const pinned = pinnedApps.filter((id) => appRegistry[id] && !uninstalledApps.includes(id));
+  const others = appList.filter((a) => !pinnedApps.includes(a.id) && !uninstalledApps.includes(a.id));
+  const recents = recentApps.filter((id) => appRegistry[id] && !uninstalledApps.includes(id)).slice(0, 4);
 
   const renderTile = (id: AppId) => {
     const app = appRegistry[id];

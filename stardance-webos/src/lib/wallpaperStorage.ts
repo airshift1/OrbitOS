@@ -1,6 +1,52 @@
 const DB_NAME = "orbitos-wallpapers";
 const STORE_NAME = "images";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_PIXELS = 32_000_000;
+const WALLPAPER_TYPES = new Map([
+  [".png", "image/png"],
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".webp", "image/webp"],
+  [".gif", "image/gif"],
+]);
+
+function hasUnsupportedScriptExtension(name: string): boolean {
+  return name.split(".").slice(1).some((part) => /^(?:php\d*|phtml|phar|jsp|jspx|jhtml)$/i.test(part));
+}
+
+function hasImageSignature(type: string, bytes: Uint8Array): boolean {
+  if (type === "image/png") return bytes.length >= 8 && [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => bytes[index] === byte);
+  if (type === "image/jpeg") return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  if (type === "image/gif") return bytes.length >= 6 && ["GIF87a", "GIF89a"].some((signature) => String.fromCharCode(...bytes.slice(0, 6)) === signature);
+  if (type === "image/webp") return bytes.length >= 12
+    && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF"
+    && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+  return false;
+}
+
+export async function validateWallpaperFile(file: Pick<File, "name" | "type" | "size" | "slice">): Promise<void> {
+  if (file.name.length > 255 || hasUnsupportedScriptExtension(file.name)) {
+    throw new Error("Server-script file extensions are not supported for wallpapers.");
+  }
+  if (file.size === 0 || file.size > MAX_IMAGE_BYTES) {
+    throw new Error("Wallpaper images must be 8 MB or smaller.");
+  }
+  const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+  const expectedType = WALLPAPER_TYPES.get(extension);
+  if (!expectedType || file.type !== expectedType) {
+    throw new Error("Choose a PNG, JPEG, WebP, or GIF image with a matching file extension.");
+  }
+  const bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+  if (!hasImageSignature(expectedType, bytes)) {
+    throw new Error("The selected file does not contain a valid image signature.");
+  }
+}
+
+export function validateWallpaperDimensions(width: number, height: number): void {
+  if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width < 1 || height < 1 || width * height > MAX_IMAGE_PIXELS) {
+    throw new Error("Wallpaper dimensions must be positive and at most 32 megapixels.");
+  }
+}
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -27,11 +73,15 @@ function requestResult<T>(request: IDBRequest<T>): Promise<T> {
 }
 
 export async function saveWallpaperImage(file: File): Promise<string> {
-  if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
-    throw new Error("Choose a PNG, JPEG, WebP, or GIF image.");
+  await validateWallpaperFile(file);
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("Image decoding is unavailable in this browser, so the wallpaper cannot be validated.");
   }
-  if (file.size === 0 || file.size > MAX_IMAGE_BYTES) {
-    throw new Error("Wallpaper images must be smaller than 8 MB.");
+  const bitmap = await createImageBitmap(file);
+  try {
+    validateWallpaperDimensions(bitmap.width, bitmap.height);
+  } finally {
+    bitmap.close();
   }
   const db = await openDatabase();
   const id = crypto.randomUUID();

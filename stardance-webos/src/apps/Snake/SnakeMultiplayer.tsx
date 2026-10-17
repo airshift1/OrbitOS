@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import type { Direction, Point } from "./engine";
-import { VIEWPORT_COLUMNS, VIEWPORT_ROWS } from "./engine";
 import type { PlayerSnapshot, PublicRoom, RoomSnapshot } from "./multiplayerTypes";
 import { getSnakeWebSocketUrl } from "./multiplayerConnection";
 import { useWindowStore } from "../../stores/useWindowStore";
@@ -8,6 +7,7 @@ import { ClassicSnakeHead, Cupcake, UnicornHead } from "./SnakeArt";
 import type { UnicornSkin } from "./unicornSkins.js";
 import { appendHeadHistory, interpolateSnake } from "./motion";
 import { useSnakeSnapshotInterpolation } from "./useSnakeAnimation";
+import { useSnakeViewport } from "./useSnakeViewport";
 
 type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "offline";
 type PendingAction =
@@ -25,12 +25,12 @@ const DIRECTION_KEYS: Record<string, Direction> = {
   ArrowLeft: "left", a: "left", A: "left",
 };
 
-function pointStyle(point: Point, camera: Point): CSSProperties {
+function pointStyle(point: Point, camera: Point, columns: number, rows: number): CSSProperties {
   return {
-    left: `${((point.x - camera.x) / VIEWPORT_COLUMNS) * 100}%`,
-    top: `${((point.y - camera.y) / VIEWPORT_ROWS) * 100}%`,
-    width: `${100 / VIEWPORT_COLUMNS}%`,
-    height: `${100 / VIEWPORT_ROWS}%`,
+    left: `${((point.x - camera.x) / columns) * 100}%`,
+    top: `${((point.y - camera.y) / rows) * 100}%`,
+    width: `${100 / columns}%`,
+    height: `${100 / rows}%`,
   };
 }
 
@@ -257,6 +257,8 @@ export function SnakeMultiplayer({
   onExit: () => void;
 }) {
   const room = useSnakeRoom();
+  const stageRef = useRef<HTMLDivElement>(null);
+  const viewport = useSnakeViewport(stageRef, Boolean(room.endpoint));
   const windowState = useWindowStore((state) => state.windows.find((item) => item.id === windowId));
   const toggleMaximize = useWindowStore((state) => state.toggleMaximize);
   const [name, setName] = useState(() => storedValue(NAME_KEY) || "Player");
@@ -271,15 +273,18 @@ export function SnakeMultiplayer({
   const readyCount = onlinePlayers.filter((player) => player.ready).length;
   const focusHead = self?.segments[0] ?? room.snapshot?.players.find((player) => player.online)?.segments[0] ?? { x: 30, y: 20 };
   const camera = useMemo(() => ({
-    x: Math.max(0, Math.min((room.snapshot?.columns ?? 60) - VIEWPORT_COLUMNS, focusHead.x - Math.floor(VIEWPORT_COLUMNS / 2))),
-    y: Math.max(0, Math.min((room.snapshot?.rows ?? 40) - VIEWPORT_ROWS, focusHead.y - Math.floor(VIEWPORT_ROWS / 2))),
-  }), [focusHead.x, focusHead.y, room.snapshot?.columns, room.snapshot?.rows]);
+    x: Math.max(0, Math.min((room.snapshot?.columns ?? 120) - viewport.columns, focusHead.x - Math.floor(viewport.columns / 2))),
+    y: Math.max(0, Math.min((room.snapshot?.rows ?? 80) - viewport.rows, focusHead.y - Math.floor(viewport.rows / 2))),
+  }), [focusHead.x, focusHead.y, room.snapshot?.columns, room.snapshot?.rows, viewport.columns, viewport.rows]);
   const isHost = self?.id === room.snapshot?.hostId;
   const isPlaying = room.snapshot?.status === "playing" && room.connectionStatus === "connected";
   const stepMs = Math.max(125, 240 - Math.max(0, ...(room.snapshot?.players.map((player) => player.score) ?? [])) * 1.5);
   const animationProgress = useSnakeSnapshotInterpolation(isPlaying, stepMs, room.snapshot);
   const rootStyle = {
     "--snake-accent": accentColor,
+    "--snake-viewport-columns": viewport.columns,
+    "--snake-viewport-rows": viewport.rows,
+    "--snake-board-ratio": viewport.columns / viewport.rows,
   } as CSSProperties;
 
   const steer = useCallback((next: Direction) => {
@@ -400,33 +405,35 @@ export function SnakeMultiplayer({
           <section className="snake-multi__game">
             <div className="snake-multi__scorebar">
               <strong>{room.snapshot ? `${room.snapshot.players.length} / 8 players` : "Join a room to play"}</strong>
-              <span>{room.snapshot ? `${room.snapshot.columns} × ${room.snapshot.rows} world` : "60 × 40 world"}</span>
+              <span>{room.snapshot ? `${room.snapshot.columns} × ${room.snapshot.rows} world` : "120 × 80 world"}</span>
             </div>
-            <div
-              className="snake__board snake-multi__board"
-              tabIndex={0}
-              role="application"
-              aria-label="Multiplayer Snake board. Use arrow keys or WASD to steer."
-              onPointerDown={(event) => { event.currentTarget.focus(); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={() => { swipeStart.current = null; }}
-            >
+            <div ref={stageRef} className="snake-multi__stage">
+              <div
+                className="snake__board snake-multi__board"
+                style={{ width: viewport.width || undefined, height: viewport.height || undefined }}
+                tabIndex={0}
+                role="application"
+                aria-label="Multiplayer Snake board. Use arrow keys or WASD to steer."
+                onPointerDown={(event) => { event.currentTarget.focus(); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={() => { swipeStart.current = null; }}
+              >
               <div
                 className="snake__world-edge"
                 style={{
-                  left: `${(-camera.x / VIEWPORT_COLUMNS) * 100}%`,
-                  top: `${(-camera.y / VIEWPORT_ROWS) * 100}%`,
-                  width: `${((room.snapshot?.columns ?? 60) / VIEWPORT_COLUMNS) * 100}%`,
-                  height: `${((room.snapshot?.rows ?? 40) / VIEWPORT_ROWS) * 100}%`,
+                  left: `${(-camera.x / viewport.columns) * 100}%`,
+                  top: `${(-camera.y / viewport.rows) * 100}%`,
+                  width: `${((room.snapshot?.columns ?? 120) / viewport.columns) * 100}%`,
+                  height: `${((room.snapshot?.rows ?? 80) / viewport.rows) * 100}%`,
                 }}
                 aria-hidden="true"
               />
               <div className="snake__grid snake-multi__grid" aria-hidden="true">
                 {room.snapshot?.players.map((player) => (
-                  <PlayerSnake key={player.id} player={player} segments={interpolateSnake(headHistory.current[player.id] ?? player.segments, player.segments, animationProgress)} selfId={room.selfId} camera={camera} visualMode={visualMode} unicornSkin={unicornSkin} />
+                  <PlayerSnake key={player.id} player={player} segments={interpolateSnake(headHistory.current[player.id] ?? player.segments, player.segments, animationProgress)} selfId={room.selfId} camera={camera} viewport={viewport} visualMode={visualMode} unicornSkin={unicornSkin} />
                 ))}
-                {room.snapshot?.food && <Food point={room.snapshot.food} camera={camera} visualMode={visualMode} />}
-                {room.snapshot?.specialFood && <Food point={room.snapshot.specialFood} camera={camera} visualMode={visualMode} special />}
+                {room.snapshot?.food && <Food point={room.snapshot.food} camera={camera} viewport={viewport} visualMode={visualMode} />}
+                {room.snapshot?.specialFood && <Food point={room.snapshot.specialFood} camera={camera} viewport={viewport} visualMode={visualMode} special />}
               </div>
               {(!room.snapshot || room.snapshot.status === "waiting" || room.snapshot.status === "celebrating" || room.snapshot.status === "gameover" || room.connectionStatus !== "connected") && (
                 <div className="snake-multi__overlay" aria-live="polite">
@@ -465,6 +472,7 @@ export function SnakeMultiplayer({
                   )}
                 </div>
               )}
+            </div>
             </div>
             <div className="snake-multi__controls" role="group" aria-label="Touch direction controls">
               {(["up", "left", "down", "right"] as const).map((value) => (
@@ -532,6 +540,7 @@ function PlayerSnake({
   segments,
   selfId,
   camera,
+  viewport,
   visualMode,
   unicornSkin,
 }: {
@@ -539,16 +548,17 @@ function PlayerSnake({
   segments: Point[];
   selfId: string;
   camera: Point;
+  viewport: { columns: number; rows: number };
   visualMode: "classic" | "unicorn";
   unicornSkin: UnicornSkin;
 }) {
   return (
     <>
       {segments.slice(1).map((segment, index) => (
-        <div className={`snake__segment snake-multi__segment ${visualMode === "unicorn" && player.id === selfId ? "snake__segment--unicorn" : ""}`} key={`${player.id}-${index}`} style={{ ...pointStyle(segment, camera), "--player-color": player.color } as CSSProperties} />
+        <div className={`snake__segment snake-multi__segment ${visualMode === "unicorn" && player.id === selfId ? "snake__segment--unicorn" : ""}`} key={`${player.id}-${index}`} style={{ ...pointStyle(segment, camera, viewport.columns, viewport.rows), "--player-color": player.color } as CSSProperties} />
       ))}
       {segments[0] && (
-        <div className="snake__head snake-multi__head" style={pointStyle(segments[0], camera)}>
+        <div className="snake__head snake-multi__head" style={pointStyle(segments[0], camera, viewport.columns, viewport.rows)}>
           {visualMode === "unicorn" && player.id === selfId
             ? <UnicornHead direction={player.direction} skin={unicornSkin} />
             : <span className="snake-multi__player-head" style={{ "--local-snake-color": player.color } as CSSProperties}><ClassicSnakeHead direction={player.direction} /></span>}
@@ -558,9 +568,9 @@ function PlayerSnake({
   );
 }
 
-function Food({ point, camera, visualMode, special = false }: { point: Point; camera: Point; visualMode: "classic" | "unicorn"; special?: boolean }) {
+function Food({ point, camera, viewport, visualMode, special = false }: { point: Point; camera: Point; viewport: { columns: number; rows: number }; visualMode: "classic" | "unicorn"; special?: boolean }) {
   return (
-    <div className={`snake__food ${visualMode === "unicorn" ? "" : "snake__food--classic"} ${special ? "snake__food--special" : ""}`} style={pointStyle(point, camera)} aria-label={special ? "Special cupcake" : "Food"}>
+    <div className={`snake__food ${visualMode === "unicorn" ? "" : "snake__food--classic"} ${special ? "snake__food--special" : ""}`} style={pointStyle(point, camera, viewport.columns, viewport.rows)} aria-label={special ? "Special cupcake" : "Food"}>
       {visualMode === "unicorn" ? <Cupcake special={special} /> : <span>{special ? "★" : null}</span>}
     </div>
   );

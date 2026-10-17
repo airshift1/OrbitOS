@@ -1,52 +1,43 @@
 import { lazy, Suspense, type ComponentType } from "react";
 import type { AppDefinition, AppId, AppProps } from "../types";
-import { Calculator } from "./Calculator/Calculator";
-import { TextEditor } from "./TextEditor/TextEditor";
-import { FileExplorer } from "./FileExplorer/FileExplorer";
-import { Terminal } from "./Terminal/Terminal";
-import { Settings } from "./Settings/Settings";
-import { MiniBrowser } from "./MiniBrowser/MiniBrowser";
-import { AboutMe } from "./AboutMe/AboutMe";
-import { AboutOrbitOS } from "./AboutOrbitOS";
-import { Profile } from "./Profile";
-import { Paint } from "./Paint/Paint";
-import { Clock } from "./Clock/Clock";
-import { TaskManager } from "./TaskManager/TaskManager";
-import { Welcome } from "./Welcome/Welcome";
-import { Notes } from "./Notes/Notes";
-import { Launcher } from "./Launcher/Launcher";
-import { ThemeStudio } from "./ThemeStudio/ThemeStudio";
-import { Snake } from "./Snake/Snake";
-
-// The tiling engine (react-workspaces + emotion + Font Awesome) is the heaviest
-// dependency, so it is split into its own chunk and loaded on first launch.
-const WorkspacesLazy = lazy(() => import("./Workspaces/Workspaces"));
-
-function WorkspacesApp(props: AppProps) {
-  return (
-    <Suspense fallback={<div className="app-loading">Loading Workspaces…</div>}>
-      <WorkspacesLazy {...props} />
-    </Suspense>
-  );
-}
 
 function lazyApp(load: () => Promise<{ default: ComponentType<AppProps> }>) {
   const Component = lazy(load);
   return function LazyApp(props: AppProps) {
     return (
-      <Suspense fallback={<div className="app-loading">Loading game…</div>}>
+      <Suspense fallback={<div className="app-loading">Loading app…</div>}>
         <Component {...props} />
       </Suspense>
     );
   };
 }
 
+const CalculatorApp = lazyApp(() => import("./Calculator/Calculator").then(({ Calculator }) => ({ default: Calculator })));
+const TextEditorApp = lazyApp(() => import("./TextEditor/TextEditor").then(({ TextEditor }) => ({ default: TextEditor })));
+const FileExplorerApp = lazyApp(() => import("./FileExplorer/FileExplorer").then(({ FileExplorer }) => ({ default: FileExplorer })));
+const TerminalApp = lazyApp(() => import("./Terminal/Terminal").then(({ Terminal }) => ({ default: Terminal })));
+const SettingsApp = lazyApp(() => import("./Settings/Settings").then(({ Settings }) => ({ default: Settings })));
+const MiniBrowserApp = lazyApp(() => import("./MiniBrowser/MiniBrowser").then(({ MiniBrowser }) => ({ default: MiniBrowser })));
+const AboutMeApp = lazyApp(() => import("./AboutMe/AboutMe").then(({ AboutMe }) => ({ default: AboutMe })));
+const AboutOrbitOSApp = lazyApp(() => import("./AboutOrbitOS").then(({ AboutOrbitOS }) => ({ default: AboutOrbitOS })));
+const ProfileApp = lazyApp(() => import("./Profile").then(({ Profile }) => ({ default: Profile })));
+const PaintApp = lazyApp(() => import("./Paint/Paint").then(({ Paint }) => ({ default: Paint })));
+const ClockApp = lazyApp(() => import("./Clock/Clock").then(({ Clock }) => ({ default: Clock })));
+const TaskManagerApp = lazyApp(() => import("./TaskManager/TaskManager").then(({ TaskManager }) => ({ default: TaskManager })));
+const WelcomeApp = lazyApp(() => import("./Welcome/Welcome").then(({ Welcome }) => ({ default: Welcome })));
+const NotesApp = lazyApp(() => import("./Notes/Notes").then(({ Notes }) => ({ default: Notes })));
+const LauncherApp = lazyApp(() => import("./Launcher/Launcher").then(({ Launcher }) => ({ default: Launcher })));
+const ThemeStudioApp = lazyApp(() => import("./ThemeStudio/ThemeStudio").then(({ ThemeStudio }) => ({ default: ThemeStudio })));
+const SnakeApp = lazyApp(() => import("./Snake/Snake").then(({ Snake }) => ({ default: Snake })));
+const WorkspacesApp = lazyApp(() => import("./Workspaces/Workspaces"));
 const DinoRunApp = lazyApp(() => import("./DinoRun/DinoRun").then(({ DinoRun }) => ({ default: DinoRun })));
 const OrbitBlastApp = lazyApp(() => import("./OrbitBlast/OrbitBlast").then(({ OrbitBlast }) => ({ default: OrbitBlast })));
 const OrbitDepthsApp = lazyApp(() => import("./OrbitDepths/OrbitDepthsGame").then(({ OrbitDepths }) => ({ default: OrbitDepths })));
 const MortalKombatMobileApp = lazyApp(() => import("./MortalKombatMobile/MortalKombatMobile").then(({ MortalKombatMobile }) => ({ default: MortalKombatMobile })));
 const Number2048App = lazyApp(() => import("./Number2048/Number2048").then(({ Number2048 }) => ({ default: Number2048 })));
 const SandtrixApp = lazyApp(() => import("./Sandtrix/Sandtrix").then(({ Sandtrix }) => ({ default: Sandtrix })));
+const OrbitStoreApp = lazyApp(() => import("./OrbitStore/OrbitStore").then(({ OrbitStore }) => ({ default: OrbitStore })));
+const LocalAssistantApp = lazyApp(() => import("./Assistant/Assistant").then(({ Assistant }) => ({ default: Assistant })));
 
 /**
  * Every OrbitOS app. `accent` tints its icon tile, `category` drives the App
@@ -59,7 +50,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Sparkles",
     description: "A quick tour of OrbitOS",
     category: "System",
-    component: Welcome,
+    component: WelcomeApp,
     defaultWidth: 640,
     defaultHeight: 560,
     minWidth: 400,
@@ -73,7 +64,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Folder",
     description: "Browse and manage your files",
     category: "System",
-    component: FileExplorer,
+    component: FileExplorerApp,
     defaultWidth: 720,
     defaultHeight: 480,
     minWidth: 480,
@@ -86,7 +77,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "StickyNote",
     description: "Notes that persist across sessions",
     category: "Productivity",
-    component: Notes,
+    component: NotesApp,
     defaultWidth: 680,
     defaultHeight: 480,
     minWidth: 440,
@@ -100,7 +91,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "FileText",
     description: "Edit plain-text files",
     category: "Productivity",
-    component: TextEditor,
+    component: TextEditorApp,
     defaultWidth: 640,
     defaultHeight: 460,
     minWidth: 380,
@@ -113,7 +104,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "TerminalSquare",
     description: "Command line for OrbitOS",
     category: "System",
-    component: Terminal,
+    component: TerminalApp,
     defaultWidth: 640,
     defaultHeight: 400,
     minWidth: 380,
@@ -126,7 +117,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Calculator",
     description: "Arithmetic and expressions",
     category: "Tools",
-    component: Calculator,
+    component: CalculatorApp,
     defaultWidth: 320,
     defaultHeight: 500,
     minWidth: 280,
@@ -140,7 +131,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Clock",
     description: "World clock, stopwatch and timer",
     category: "Tools",
-    component: Clock,
+    component: ClockApp,
     defaultWidth: 380,
     defaultHeight: 540,
     minWidth: 320,
@@ -154,7 +145,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Paintbrush",
     description: "Sketch and save pictures",
     category: "Media",
-    component: Paint,
+    component: PaintApp,
     defaultWidth: 860,
     defaultHeight: 580,
     minWidth: 520,
@@ -167,7 +158,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Globe",
     description: "Browse the web",
     category: "Internet",
-    component: MiniBrowser,
+    component: MiniBrowserApp,
     defaultWidth: 900,
     defaultHeight: 600,
     minWidth: 520,
@@ -193,7 +184,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Activity",
     description: "Live performance graphs and running tasks",
     category: "System",
-    component: TaskManager,
+    component: TaskManagerApp,
     defaultWidth: 600,
     defaultHeight: 500,
     minWidth: 440,
@@ -207,7 +198,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Gamepad2",
     description: "Classic Snake or a magical Unicorn Dreams adventure",
     category: "Tools",
-    component: Snake,
+    component: SnakeApp,
     defaultWidth: 1120,
     defaultHeight: 820,
     minWidth: 320,
@@ -305,11 +296,38 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "LayoutGrid",
     description: "Browse every installed app",
     category: "System",
-    component: Launcher,
+    component: LauncherApp,
     defaultWidth: 640,
     defaultHeight: 500,
     minWidth: 380,
     minHeight: 320,
+    singleInstance: true,
+    panelSafe: true,
+  },
+  "orbit-store": {
+    id: "orbit-store",
+    name: "Orbit Store",
+    icon: "LayoutGrid",
+    description: "Discover apps and games for OrbitOS",
+    category: "System",
+    component: OrbitStoreApp,
+    defaultWidth: 1080,
+    defaultHeight: 740,
+    minWidth: 360,
+    minHeight: 340,
+    singleInstance: true,
+  },
+  assistant: {
+    id: "assistant",
+    name: "Local Assistant",
+    icon: "Bot",
+    description: "Chat with a model running on your local Ollama server",
+    category: "Tools",
+    component: LocalAssistantApp,
+    defaultWidth: 760,
+    defaultHeight: 680,
+    minWidth: 360,
+    minHeight: 420,
     singleInstance: true,
     panelSafe: true,
   },
@@ -319,7 +337,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Palette",
     description: "Theme, accent colour, surfaces and corners",
     category: "Media",
-    component: ThemeStudio,
+    component: ThemeStudioApp,
     defaultWidth: 760,
     defaultHeight: 520,
     minWidth: 520,
@@ -333,7 +351,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "Settings",
     description: "Appearance, display, sound and system",
     category: "System",
-    component: Settings,
+    component: SettingsApp,
     defaultWidth: 720,
     defaultHeight: 520,
     minWidth: 480,
@@ -347,7 +365,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "User",
     description: "System information, credits and version",
     category: "System",
-    component: AboutOrbitOS,
+    component: AboutOrbitOSApp,
     defaultWidth: 560,
     defaultHeight: 520,
     minWidth: 380,
@@ -361,7 +379,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "User",
     description: "Who built this",
     category: "Productivity",
-    component: AboutMe,
+    component: AboutMeApp,
     defaultWidth: 560,
     defaultHeight: 520,
     minWidth: 380,
@@ -375,7 +393,7 @@ export const appRegistry: Record<AppId, AppDefinition> = {
     icon: "UserRound",
     description: "Your account and personal preferences",
     category: "System",
-    component: Profile,
+    component: ProfileApp,
     defaultWidth: 480,
     defaultHeight: 420,
     minWidth: 360,

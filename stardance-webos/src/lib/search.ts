@@ -120,6 +120,7 @@ export function searchAll(query: string): SearchItem[] {
   const out: SearchItem[] = [];
 
   for (const app of appList) {
+    if (useSystemStore.getState().uninstalledApps.includes(app.id)) continue;
     if (matches(q, app.name, app.description, app.category)) {
       out.push({
         key: `app-${app.id}`,

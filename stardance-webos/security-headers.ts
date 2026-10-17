@@ -14,7 +14,7 @@ export const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
-  "connect-src 'self' wss:",
+  "connect-src 'self' wss: http://localhost:* http://*.localhost:* http://127.0.0.1:* https://localhost:* https://*.localhost:* https://127.0.0.1:*",
   "frame-src https:",
   "object-src 'none'",
   "base-uri 'self'",

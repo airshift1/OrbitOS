@@ -85,9 +85,9 @@ describe("authoritative Snake room service", () => {
   it("keeps boost server-authoritative and applies one growth unit per two boosted pickups", () => {
     let now = 1_000;
     let call = 0;
-    let column = 29;
+    let column = 59;
     const random = () => {
-      const value = call % 2 === 0 ? (column + 0.5) / WORLD_COLUMNS : 20.5 / WORLD_ROWS;
+      const value = call % 2 === 0 ? (column + 0.5) / WORLD_COLUMNS : 40.5 / WORLD_ROWS;
       call += 1;
       if (call % 2 === 0) column -= 1;
       return value;
@@ -102,7 +102,7 @@ describe("authoritative Snake room service", () => {
 
     now += 240;
     manager.tick();
-    expect(manager.snapshot(host.roomCode)?.players[0]).toMatchObject({ score: 1, segments: expect.arrayContaining([{ x: 29, y: 20 }]) });
+    expect(manager.snapshot(host.roomCode)?.players[0]).toMatchObject({ score: 1, segments: expect.arrayContaining([{ x: 59, y: 40 }]) });
     expect(manager.snapshot(host.roomCode)?.players[0].segments).toHaveLength(3);
     now += 240;
     manager.tick();
@@ -146,11 +146,11 @@ describe("authoritative Snake room service", () => {
     manager.setDirection("host", "up");
     manager.setDirection("guest", "up");
 
-    for (let step = 0; step < 40; step += 1) {
+    for (let step = 0; step < 80; step += 1) {
       now += 240;
       manager.tick();
       if (step === 0) manager.setDirection("host", "left");
-      if (step === 19) manager.setDirection("guest", "right");
+      if (step === 39) manager.setDirection("guest", "right");
     }
 
     const final = manager.snapshot(host.roomCode)!;
@@ -162,9 +162,9 @@ describe("authoritative Snake room service", () => {
   it("spawns a shared cupcake at the 25-item milestone and resumes after its celebration", () => {
     let now = 1_000;
     let randomCall = 0;
-    let foodColumn = 29;
+    let foodColumn = 59;
     const random = () => {
-      const value = randomCall % 2 === 0 ? (foodColumn + 0.5) / WORLD_COLUMNS : 20.5 / WORLD_ROWS;
+      const value = randomCall % 2 === 0 ? (foodColumn + 0.5) / WORLD_COLUMNS : 40.5 / WORLD_ROWS;
       randomCall += 1;
       if (randomCall % 2 === 0) foodColumn -= 1;
       return value;
