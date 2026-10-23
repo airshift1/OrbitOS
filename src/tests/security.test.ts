@@ -139,6 +139,9 @@ describe("deployment headers", () => {
     const listed = Object.fromEntries(vercel.headers[0].headers.map((h: { key: string; value: string }) => [h.key, h.value]));
     expect(listed).toEqual(SECURITY_HEADERS);
   });
+  it("allows Bluetooth in the first-party page context", () => {
+    expect(SECURITY_HEADERS["Permissions-Policy"]).toContain("bluetooth=(self)");
+  });
   it("CSP forbids inline/remote scripts, plugins and framing of the app", () => {
     const csp = SECURITY_HEADERS["Content-Security-Policy"];
     expect(csp).toContain("script-src 'self';");

@@ -35,7 +35,7 @@ resize dividers, float apps in windows, save the layout. It is code-split into i
 JS heap (Chromium's `performance.memory`), and storage (`navigator.storage.estimate()` + virtual disk size).
 Where the browser doesn't expose a metric it says "n/a" instead of inventing a number.
 
-Wi-Fi / Bluetooth toggles are simulated UI state and are labelled as such.
+Wi-Fi is simulated. Bluetooth can connect to compatible Bluetooth Low Energy devices when the browser supports Web Bluetooth and the site is served over HTTPS or localhost; it cannot switch the computer's Bluetooth radio on or off.
 
 ## Layout
 

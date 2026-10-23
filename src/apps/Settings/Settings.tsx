@@ -9,6 +9,7 @@ import { launchApp } from "../../lib/launch";
 import { playSound } from "../../lib/sound";
 import { WORKSPACE_COUNT } from "../../lib/workspaces";
 import { isHexColor, isSafeWallpaper } from "../../lib/security";
+import { useBluetooth } from "../../lib/bluetooth";
 import { AppIcon } from "../../shell/AppIcon";
 import { Button, Field, Segmented, Switch } from "../../ui";
 import { cx, factoryReset } from "../../lib/helpers";
@@ -60,6 +61,7 @@ const WALLPAPER_ERROR = "Use a colour, a gradient, or an image from this site (a
 
 export function Settings(_props: AppProps) {
   const s = useSystemStore();
+  const bluetooth = useBluetooth();
   const [section, setSection] = useState<Section>("Appearance");
   const [custom, setCustom] = useState("");
   const [customError, setCustomError] = useState<string | undefined>();
@@ -240,8 +242,16 @@ export function Settings(_props: AppProps) {
             <Row title="Wi-Fi" hint="Simulated. Doesn't change your real connection.">
               <Switch checked={s.wifi} onChange={s.setWifi} label="Wi-Fi" />
             </Row>
-            <Row title="Bluetooth" hint="Simulated. No hardware is touched.">
-              <Switch checked={s.bluetooth} onChange={s.setBluetooth} label="Bluetooth" />
+            <Row title="Bluetooth" hint={bluetooth.deviceName ? `Connected to ${bluetooth.deviceName}.` : bluetooth.message}>
+              <Button
+                size="sm"
+                variant={bluetooth.status === "connected" ? "quiet" : "primary"}
+                disabled={bluetooth.availability !== "supported" && bluetooth.status !== "connected"}
+                loading={bluetooth.status === "requesting"}
+                onClick={bluetooth.status === "connected" ? bluetooth.disconnect : () => void bluetooth.connect()}
+              >
+                {bluetooth.status === "connected" ? "Disconnect" : "Connect"}
+              </Button>
             </Row>
             <Row title="Browser connection" hint="From navigator.onLine">
               <span className={cx("status", navigator.onLine ? "status--ok" : "status--bad")}>{navigator.onLine ? "Online" : "Offline"}</span>

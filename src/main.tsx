@@ -7,6 +7,7 @@ import "./styles/ui.css";
 import "./styles/window-styles.css";
 import App from "./App.tsx";
 import { restoreSession, startSessionPersistence } from "./lib/session";
+import { BluetoothProvider } from "./lib/BluetoothProvider";
 
 /** Last-resort screen if startup itself throws. Built with DOM APIs only. */
 function showFatal(root: HTMLElement) {
@@ -30,7 +31,9 @@ try {
     onUncaughtError: (error) => console.error("Uncaught error", error),
   }).render(
     <StrictMode>
-      <App />
+      <BluetoothProvider>
+        <App />
+      </BluetoothProvider>
     </StrictMode>,
   );
 } catch (error) {

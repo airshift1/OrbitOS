@@ -5,6 +5,7 @@ import { useNotificationStore, type NotifKind } from "../../stores/useNotificati
 import { launchApp } from "../../lib/launch";
 import { timeAgo, cx } from "../../lib/helpers";
 import { playSound } from "../../lib/sound";
+import { useBluetooth } from "../../lib/bluetooth";
 import { Button, EmptyState, Switch } from "../../ui";
 import "./QuickPanel.css";
 
@@ -30,6 +31,7 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint?: s
 /** Quick settings and the notification list. */
 export function QuickPanel({ open, onClose }: Props) {
   const s = useSystemStore();
+  const bluetooth = useBluetooth();
   const items = useNotificationStore((n) => n.items);
   const remove = useNotificationStore((n) => n.remove);
   const clear = useNotificationStore((n) => n.clear);
@@ -55,7 +57,21 @@ export function QuickPanel({ open, onClose }: Props) {
         <section className="qp__section" aria-label="Quick settings">
           <ul className="qp__toggles">
             <ToggleRow label="Wi-Fi" hint="Simulated" checked={s.wifi} onChange={s.setWifi} />
-            <ToggleRow label="Bluetooth" hint="Simulated" checked={s.bluetooth} onChange={s.setBluetooth} />
+            <li className="qp__toggle">
+              <span className="qp__toggle-text">
+                <span>Bluetooth</span>
+                <small>{bluetooth.deviceName || bluetooth.message}</small>
+              </span>
+              <Button
+                size="sm"
+                variant={bluetooth.status === "connected" ? "quiet" : "primary"}
+                disabled={bluetooth.availability !== "supported" && bluetooth.status !== "connected"}
+                loading={bluetooth.status === "requesting"}
+                onClick={bluetooth.status === "connected" ? bluetooth.disconnect : () => void bluetooth.connect()}
+              >
+                {bluetooth.status === "connected" ? "Disconnect" : "Connect"}
+              </Button>
+            </li>
             <ToggleRow label="Do not disturb" hint="No pop-ups or alert sounds" checked={s.doNotDisturb} onChange={s.setDoNotDisturb} />
             <ToggleRow label="Light theme" checked={s.theme === "light"} onChange={(v) => s.setTheme(v ? "light" : "orbit")} />
             <ToggleRow label="Night light" checked={s.nightMode} onChange={s.setNightMode} />

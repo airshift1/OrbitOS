@@ -43,7 +43,6 @@ interface SystemStoreState extends SystemSettings {
   setStartupSound: (v: boolean) => void;
   setRestoreSession: (v: boolean) => void;
   setWifi: (v: boolean) => void;
-  setBluetooth: (v: boolean) => void;
   toggleSound: () => void;
   setBooted: (v: boolean) => void;
   setLocked: (v: boolean) => void;
@@ -72,7 +71,6 @@ const defaults: SystemSettings = {
   startupSound: false,
   restoreSession: false,
   wifi: true,
-  bluetooth: false,
 };
 
 const DEFAULT_PINNED: AppId[] = ["notes", "file-explorer", "settings"];
@@ -140,7 +138,6 @@ export function sanitizePersisted(raw: unknown): Partial<SystemStoreState> {
   out.startupSound = bool(p.startupSound, defaults.startupSound);
   out.restoreSession = bool(p.restoreSession, defaults.restoreSession);
   out.wifi = bool(p.wifi, defaults.wifi);
-  out.bluetooth = bool(p.bluetooth, defaults.bluetooth);
   out.locked = bool(p.locked, false);
   out.welcomed = bool(p.welcomed, false);
   out.volume = clampNum(p.volume, 0, 100, defaults.volume);
@@ -179,7 +176,6 @@ export const useSystemStore = create<SystemStoreState>()(
       setStartupSound: (v) => set({ startupSound: v }),
       setRestoreSession: (v) => set({ restoreSession: v }),
       setWifi: (v) => set({ wifi: v }),
-      setBluetooth: (v) => set({ bluetooth: v }),
       toggleSound: () => set((s) => ({ soundEnabled: !s.soundEnabled })),
       setBooted: (v) => set({ booted: v }),
       setLocked: (v) => set({ locked: v }),
@@ -220,7 +216,6 @@ export const useSystemStore = create<SystemStoreState>()(
         startupSound: state.startupSound,
         restoreSession: state.restoreSession,
         wifi: state.wifi,
-        bluetooth: state.bluetooth,
         locked: state.locked,
         welcomed: state.welcomed,
         pinnedApps: state.pinnedApps,

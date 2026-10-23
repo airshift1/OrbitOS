@@ -119,7 +119,6 @@ export interface SystemSettings {
   /** Re-open windows after a reload. */
   restoreSession: boolean;
   wifi: boolean;
-  bluetooth: boolean;
 }
 
 // ---------- Context menu ----------
