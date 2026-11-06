@@ -154,7 +154,7 @@
 .orbit-store__detail-icon { display: grid; width: 150px; height: 150px; flex: 0 0 auto; place-items: center; border: 1px solid var(--color-border); border-radius: 27px; background: color-mix(in srgb, var(--store-art-color) 16%, var(--color-surface)); }
 .orbit-store__detail-icon .app-icon { width: 104px !important; height: 104px !important; border-radius: 25px; }
 .orbit-store__detail-icon .app-icon svg { width: 51px; height: 51px; }
-.orbit-store__detail-meta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 13px 0 20px; }
+.orbit-store__detail-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 8px; margin: 13px 0 20px; }
 .orbit-store__detail-meta > div { display: grid; gap: 4px; padding: 11px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface); }
 .orbit-store__detail-meta span { color: var(--color-text-dim); font-size: 9px; }
 .orbit-store__detail-meta strong { font-size: 10px; font-weight: 600; overflow-wrap: anywhere; }
@@ -164,6 +164,9 @@
 .orbit-store__detail-panel h3 { margin: 17px 0 7px; font-size: 11px; }
 .orbit-store__detail-panel p,.orbit-store__detail-panel li { color: var(--color-text-dim); font-size: 10px; line-height: 1.55; }
 .orbit-store__detail-panel ul { display: grid; gap: 6px; padding-left: 16px; }
+.orbit-store__download-note { display: grid; gap: 5px; margin-top: 14px; padding: 11px; border: 1px solid color-mix(in srgb, var(--color-warning) 42%, var(--color-border)); border-radius: 8px; background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface)); }
+.orbit-store__download-note strong { font-size: 10px; }
+.orbit-store__download-note span { color: var(--color-text-dim); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
 .orbit-store__preview-art { display: flex; min-height: 156px; align-items: center; justify-content: center; gap: 13px; margin: 10px 0; border: 1px solid var(--color-border); border-radius: 9px; background: linear-gradient(135deg, color-mix(in srgb, var(--store-art-color) 18%, var(--color-surface)), var(--color-surface-2)); }
 .orbit-store__preview-art .app-icon { width: 80px !important; height: 80px !important; border-radius: 20px; }
 .orbit-store__preview-art .app-icon svg { width: 40px; height: 40px; }

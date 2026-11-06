@@ -100,17 +100,34 @@ describe("authoritative Snake room service", () => {
     expect(manager.setBoost("host", true)).toBe(true);
     expect(manager.snapshot(host.roomCode)?.players[0].boosting).toBe(true);
 
-    now += 240;
-    manager.tick();
-    expect(manager.snapshot(host.roomCode)?.players[0]).toMatchObject({ score: 1, segments: expect.arrayContaining([{ x: 59, y: 40 }]) });
-    expect(manager.snapshot(host.roomCode)?.players[0].segments).toHaveLength(3);
-    now += 240;
-    manager.tick();
+    for (let step = 0; step < 100 && (manager.snapshot(host.roomCode)?.players[0].score ?? 0) < 1; step += 1) {
+      now += 40;
+      manager.tick();
+    }
+    const firstPickup = manager.snapshot(host.roomCode)?.players[0];
+    expect(firstPickup?.score).toBe(1);
+    expect(firstPickup?.segments[0].x).toBeLessThan(60);
+    expect(manager.snapshot(host.roomCode)?.players[0].segments).toHaveLength(5);
+    for (let step = 0; step < 100 && (manager.snapshot(host.roomCode)?.players[0].score ?? 0) < 2; step += 1) {
+      now += 40;
+      manager.tick();
+    }
     const hostState = manager.snapshot(host.roomCode)?.players[0];
     expect(hostState?.score).toBe(2);
-    expect(hostState?.segments).toHaveLength(4);
+    expect(hostState?.segments).toHaveLength(6);
+    const boostedHead = hostState!.segments[0];
+    now += 40;
+    manager.tick();
+    const activeStepHead = manager.snapshot(host.roomCode)!.players[0].segments[0];
+    const activeStepDistance = Math.abs(activeStepHead.x - boostedHead.x);
     expect(manager.setBoost("host", false)).toBe(true);
     expect(manager.snapshot(host.roomCode)?.players[0].boosting).toBe(false);
+    now += 40;
+    manager.tick();
+    const releasedHead = manager.snapshot(host.roomCode)?.players[0].segments[0];
+    const releasedStepDistance = Math.abs(releasedHead!.x - activeStepHead.x);
+    expect(releasedStepDistance).toBeGreaterThan(0);
+    expect(releasedStepDistance).toBeLessThan(activeStepDistance);
   });
 
   it("keeps player identity through a reconnect and marks disconnects in room state", () => {
@@ -174,21 +191,18 @@ describe("authoritative Snake room service", () => {
     manager.joinRoom("guest", host.roomCode, "Guest");
     manager.setReady("guest", true);
     manager.startRoom("host");
-    manager.setDirection("guest", "up");
 
-    for (let item = 0; item < 25; item += 1) {
-      now += 240;
+    for (let step = 0; step < 10_000 && (manager.snapshot(host.roomCode)?.players[0].score ?? 0) < 25; step += 1) {
+      now += 40;
       manager.tick();
-      if (item === 19) manager.setDirection("guest", "right");
     }
     expect(manager.snapshot(host.roomCode)?.players[0].score).toBe(25);
     expect(manager.snapshot(host.roomCode)?.specialFood).not.toBeNull();
 
-    now += 240;
-    manager.tick();
-    now += 240;
-    manager.tick();
-    expect(manager.snapshot(host.roomCode)?.players[0].score).toBe(27);
+    for (let step = 0; step < 100 && manager.snapshot(host.roomCode)?.status !== "celebrating"; step += 1) {
+      now += 40;
+      manager.tick();
+    }
     expect(manager.snapshot(host.roomCode)?.status).toBe("celebrating");
 
     now += 2_999;

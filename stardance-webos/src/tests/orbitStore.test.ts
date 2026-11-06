@@ -4,8 +4,11 @@ import { appList, appRegistry } from "../apps/registry";
 import {
   externalCatalog,
   getStoreAction,
+  getStoreActionLabel,
   getStoreActionUrl,
+  getStoreCompatibility,
   getStoreListing,
+  getStoreStatus,
   isStoreListingInstalled,
   openStoreExternalLink,
   searchStoreCatalog,
@@ -83,6 +86,26 @@ describe("Orbit Store UI catalog", () => {
     expect(snake && isStoreListingInstalled(snake, ["snake"])).toBe(false);
     expect(snake && getStoreAction(snake, false)).toBe("add-to-library");
     expect(snake && getStoreAction(snake, true)).toBe("open");
+  });
+
+  it("describes launchability, compatibility, and external download behavior without implying installation", () => {
+    const snake = getStoreListing("snake")!;
+    const excalidraw = getStoreListing("excalidraw")!;
+    const blender = getStoreListing("blender")!;
+
+    expect(getStoreCompatibility(snake)).toBe("Runs in an OrbitOS application window");
+    expect(getStoreStatus(snake, true)).toBe("Installed · Launches in OrbitOS");
+    expect(getStoreActionLabel(getStoreAction(snake, true))).toBe("Open in OrbitOS");
+    expect(getStoreStatus(snake, false)).toBe("Bundled · Not in your library");
+    expect(getStoreActionLabel(getStoreAction(snake, false))).toBe("Add to Orbit library");
+
+    expect(getStoreCompatibility(excalidraw)).toBe("Modern web browser; opens in a new tab");
+    expect(getStoreStatus(excalidraw)).toBe("Web app · Opens on publisher website");
+    expect(getStoreActionLabel(getStoreAction(excalidraw))).toBe("Visit Website");
+
+    expect(getStoreCompatibility(blender)).toContain("choose a compatible OS build");
+    expect(getStoreStatus(blender)).toBe("Not installed · Publisher download page only");
+    expect(getStoreActionLabel(getStoreAction(blender))).toBe("Visit download page");
   });
 
   it("launches web listings and desktop downloads only to their curated publisher URLs", () => {

@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Direction, Point } from "../src/apps/Snake/engine.js";
-import { addFoodGrowth } from "../src/apps/Snake/motion.js";
+import { addFoodGrowth, advanceBoostLevel, gridCellKey, moveSnake, segmentDistance, speedMultiplier, sweptPointHitsPoint, sweptPointHitsSnake } from "../src/apps/Snake/motion.js";
 import type { JoinResult, MultiplayerStatus, PublicRoom, RoomSnapshot, RoomVisibility } from "../src/apps/Snake/multiplayerTypes.js";
 
 export const WORLD_COLUMNS = 120;
@@ -9,6 +9,8 @@ export const ROOM_CAPACITY = 8;
 export const WINNING_SCORE = 67;
 export const DISCONNECT_GRACE_MS = 45_000;
 export const ROOM_TTL_MS = 3 * 60_000;
+const SIMULATION_STEP_MS = 40;
+const MAX_CATCH_UP_STEPS = 8;
 
 interface Player {
   id: string;
@@ -19,6 +21,7 @@ interface Player {
   nextDirection: Direction | null;
   score: number;
   growthProgress: number;
+  boostLevel: number;
   boosting: boolean;
   online: boolean;
   alive: boolean;
@@ -33,6 +36,7 @@ interface Room {
   createdAt: number;
   lastActivityAt: number;
   nextMoveAt: number;
+  lastUpdateAt: number;
   hostId: string;
   status: MultiplayerStatus;
   players: Player[];
@@ -113,6 +117,7 @@ export class SnakeRoomManager {
       createdAt: this.now(),
       lastActivityAt: this.now(),
       nextMoveAt: this.now() + 240,
+      lastUpdateAt: this.now(),
       hostId: "",
       status: "waiting",
       players: [],
@@ -175,8 +180,9 @@ export class SnakeRoomManager {
     const onlinePlayers = room?.players.filter((player) => player.online) ?? [];
     if (!room || membership.playerId !== room.hostId || room.status !== "waiting" || onlinePlayers.length < 2 || onlinePlayers.some((player) => !player.ready)) return false;
     room.status = "playing";
-    room.nextMoveAt = this.now() + 240;
-    room.lastActivityAt = this.now();
+    room.lastUpdateAt = this.now();
+    room.nextMoveAt = room.lastUpdateAt + SIMULATION_STEP_MS;
+    room.lastActivityAt = room.lastUpdateAt;
     return true;
   }
 
@@ -187,7 +193,7 @@ export class SnakeRoomManager {
     room.players.forEach((player, index) => {
       const spawn = SPAWNS[index];
       const delta = VECTOR[spawn.direction];
-      player.segments = [0, 1, 2].map((offset) => ({ x: spawn.x - delta.x * offset, y: spawn.y - delta.y * offset }));
+      player.segments = [0, 1, 2, 3, 4].map((offset) => ({ x: spawn.x - delta.x * offset, y: spawn.y - delta.y * offset }));
       player.direction = spawn.direction;
       player.nextDirection = null;
       player.score = 0;
@@ -315,14 +321,19 @@ export class SnakeRoomManager {
         continue;
       }
       if (room.status === "playing" && now >= room.nextMoveAt) {
-        this.advanceRoom(room);
-        const fastestScore = Math.max(0, ...room.players.map((player) => player.score));
-        room.nextMoveAt = now + Math.max(125, 240 - fastestScore * 1.5);
+        const elapsed = Math.max(0, now - room.lastUpdateAt);
+        const steps = Math.min(MAX_CATCH_UP_STEPS, Math.max(1, Math.ceil(elapsed / SIMULATION_STEP_MS)));
+        for (let step = 0; step < steps && room.status === "playing"; step += 1) {
+          this.advanceRoom(room, SIMULATION_STEP_MS);
+        }
+        room.lastUpdateAt = now;
+        room.nextMoveAt = now + SIMULATION_STEP_MS;
         didChange = true;
       } else if (room.status === "celebrating" && room.celebrationEndsAt !== null && now >= room.celebrationEndsAt) {
         room.status = "playing";
         room.celebrationEndsAt = null;
-        room.nextMoveAt = now + 240;
+        room.lastUpdateAt = now;
+        room.nextMoveAt = now + SIMULATION_STEP_MS;
         didChange = true;
       }
       if (didChange) {
@@ -333,7 +344,7 @@ export class SnakeRoomManager {
     return changed;
   }
 
-  private advanceRoom(room: Room): void {
+  private advanceRoom(room: Room, deltaMs: number): void {
     const activePlayers = room.players.filter((player) => player.alive && player.online);
     if (activePlayers.length === 0) {
       room.status = "gameover";
@@ -343,50 +354,59 @@ export class SnakeRoomManager {
     const moves = activePlayers.map((player) => {
       const direction = player.nextDirection ?? player.direction;
       const vector = VECTOR[direction];
-      return { player, direction, head: { x: player.segments[0].x + vector.x, y: player.segments[0].y + vector.y } };
+      const nextBoostLevel = advanceBoostLevel(player.boostLevel, player.boosting, deltaMs);
+      const movementBoost = speedMultiplier((player.boostLevel + nextBoostLevel) / 2);
+      const distance = deltaMs / Math.max(125, 240 - player.score * 1.5) * movementBoost;
+      const previousHead = player.segments[0];
+      const head = { x: previousHead.x + vector.x * distance, y: previousHead.y + vector.y * distance };
+      const eatsRegular = sweptPointHitsPoint(previousHead, head, room.food);
+      const eatsSpecial = room.specialFood !== null && sweptPointHitsPoint(previousHead, head, room.specialFood);
+      const collecting = eatsRegular || eatsSpecial;
+      const growth = collecting ? addFoodGrowth(player.growthProgress, player.boosting) : { grow: false, progress: player.growthProgress };
+      return {
+        player, direction, vector, distance, previousHead, head, collecting, eatsSpecial,
+        grows: collecting && growth.grow, growthProgress: growth.progress, boostLevel: nextBoostLevel,
+      };
     });
     const eaten = new Set<string>();
     const collisions = new Set<string>();
     for (const move of moves) {
-      const { player, head } = move;
+      const { player, previousHead, head, grows } = move;
       const bodyCollision = activePlayers.some((other) => {
-        const otherHead = moves.find((candidate) => candidate.player.id === other.id)?.head;
-        const otherCollects = otherHead !== undefined &&
-          (samePoint(otherHead, room.food) || (room.specialFood !== null && samePoint(otherHead, room.specialFood)));
-        const otherWillGrow = otherCollects && addFoodGrowth(other.growthProgress, other.boosting).grow;
-        const body = otherWillGrow ? other.segments : other.segments.slice(0, -1);
-        return body.some((segment) => samePoint(segment, head));
+        const otherMove = moves.find((candidate) => candidate.player.id === other.id)!;
+        if (other.id === player.id) {
+          const body = grows ? other.segments : other.segments.slice(0, -1);
+          return sweptPointHitsSnake(previousHead, head, body, 1);
+        }
+        const body = otherMove.grows ? other.segments : other.segments.slice(0, -1);
+        return sweptPointHitsSnake(previousHead, head, body, 1) ||
+          segmentDistance(previousHead, head, otherMove.previousHead, otherMove.head) < 0.9;
       });
-      const sameHead = moves.filter((other) => samePoint(other.head, head)).length > 1;
-      const headSwap = moves.some((other) => other.player.id !== player.id && samePoint(other.head, player.segments[0]) && samePoint(head, other.player.segments[0]));
-      if (head.x < 0 || head.x >= WORLD_COLUMNS || head.y < 0 || head.y >= WORLD_ROWS || bodyCollision || sameHead || headSwap) {
+      if (head.x < 0 || head.x >= WORLD_COLUMNS || head.y < 0 || head.y >= WORLD_ROWS || bodyCollision) {
         collisions.add(player.id);
       }
     }
 
     for (const move of moves) {
-      const { player, direction, head } = move;
-      const collecting = samePoint(head, room.food) || (room.specialFood !== null && samePoint(head, room.specialFood));
-      const growth = collecting ? addFoodGrowth(player.growthProgress, player.boosting) : { grow: false, progress: player.growthProgress };
+      const { player, direction, vector, distance, collecting, eatsSpecial, grows, growthProgress, boostLevel } = move;
       if (collisions.has(player.id)) {
         player.alive = false;
         continue;
       }
       player.direction = direction;
       player.nextDirection = null;
-      player.segments = [head, ...player.segments];
+      player.boostLevel = boostLevel;
+      player.segments = moveSnake(player.segments, vector, distance, player.segments.length + (grows ? 1 : 0));
       if (collecting) {
         eaten.add(player.id);
         player.score += 1;
         room.totalCollected += 1;
-        player.growthProgress = growth.progress;
-        if (!growth.grow) player.segments.pop();
+        player.growthProgress = growthProgress;
+        if (eatsSpecial) room.specialFood = null;
         if (player.score >= WINNING_SCORE) {
           room.winnerId = player.id;
           room.status = "gameover";
         }
-      } else {
-        player.segments.pop();
       }
     }
 
@@ -399,11 +419,7 @@ export class SnakeRoomManager {
     }
 
     if (eaten.size > 0) {
-      const ateSpecial = room.specialFood !== null && [...eaten].some((id) => {
-        const player = room.players.find(({ id: playerId }) => playerId === id);
-        return player && samePoint(moves.find((move) => move.player.id === id)!.head, room.specialFood!);
-      });
-      if (ateSpecial) room.specialFood = null;
+      const ateSpecial = moves.some((move) => eaten.has(move.player.id) && move.eatsSpecial);
       room.food = this.spawnFood(room);
       if (ateSpecial) {
         room.status = "celebrating";
@@ -415,15 +431,15 @@ export class SnakeRoomManager {
   }
 
   private spawnFood(room: Room): Point {
-    const occupied = new Set(room.players.flatMap(({ segments }) => segments.map(({ x, y }) => `${x},${y}`)));
+    const occupied = new Set(room.players.flatMap(({ segments }) => segments.map(gridCellKey)));
     for (let attempt = 0; attempt < 200; attempt += 1) {
       const point = { x: Math.floor(this.random() * WORLD_COLUMNS), y: Math.floor(this.random() * WORLD_ROWS) };
-      if (!occupied.has(`${point.x},${point.y}`) && !samePoint(point, room.food) && !(room.specialFood && samePoint(point, room.specialFood))) return point;
+      if (!occupied.has(gridCellKey(point)) && !samePoint(point, room.food) && !(room.specialFood && samePoint(point, room.specialFood))) return point;
     }
     for (let y = 0; y < WORLD_ROWS; y += 1) {
       for (let x = 0; x < WORLD_COLUMNS; x += 1) {
         const point = { x, y };
-        if (!occupied.has(`${x},${y}`) && !samePoint(point, room.food) && !(room.specialFood && samePoint(point, room.specialFood))) return point;
+        if (!occupied.has(gridCellKey(point)) && !samePoint(point, room.food) && !(room.specialFood && samePoint(point, room.specialFood))) return point;
       }
     }
     return { x: 0, y: 0 };
@@ -436,11 +452,12 @@ export class SnakeRoomManager {
       id: randomUUID(),
       name,
       color: PLAYER_COLORS[index % PLAYER_COLORS.length],
-      segments: [0, 1, 2].map((offset) => ({ x: spawn.x - delta.x * offset, y: spawn.y - delta.y * offset })),
+      segments: [0, 1, 2, 3, 4].map((offset) => ({ x: spawn.x - delta.x * offset, y: spawn.y - delta.y * offset })),
       direction: spawn.direction,
       nextDirection: null,
       score: 0,
       growthProgress: 0,
+      boostLevel: 0,
       boosting: false,
       online: true,
       alive: true,

@@ -12,7 +12,7 @@ Open two PowerShell windows in the `stardance-webos` project directory. Install 
 npm install
 ```
 
-In the first window, allow the local Vite origin and start the multiplayer service:
+In the first window, allow the Vite origins you will use and start the multiplayer service. For same-device testing:
 
 ```powershell
 $env:ALLOWED_ORIGINS = "http://localhost:5173"
@@ -29,6 +29,29 @@ npm run dev
 ```
 
 Open the Vite URL printed by the command (normally `http://localhost:5173`) and select **Snake → Online Multiplayer**. The `VITE_SNAKE_SERVER_URL` setting is read when Vite starts/builds, so restart Vite after changing it. `http://` is correct for local development; the client uses `ws://` for its socket connection.
+
+## Play on the same local network
+
+The server already listens on `0.0.0.0`, so it accepts connections through the host's network interface. For a LAN match, both devices must be on the same trusted private network; do not enable router port forwarding.
+
+1. On the host PC, find its private IPv4 address with `ipconfig` (for example, `192.168.1.25`). Do not use `127.0.0.1` or `localhost` on the second device.
+2. In the server PowerShell window, allow the exact Vite origins, replacing the example address with the host's IPv4:
+
+   ```powershell
+   $env:ALLOWED_ORIGINS = "http://192.168.1.25:5173,http://localhost:5173,http://127.0.0.1:5173"
+   npm run multiplayer:server
+   ```
+
+3. In the frontend PowerShell window, point the client at the host's server address and expose Vite on the LAN:
+
+   ```powershell
+   $env:VITE_SNAKE_SERVER_URL = "http://192.168.1.25:8080"
+   npm run dev -- --host 0.0.0.0
+   ```
+
+4. Open `http://192.168.1.25:5173` on both devices, create/join a room code, and allow Node.js/Vite through Windows Firewall only on the **Private** network if Windows asks. If inbound connections are blocked, check the host's Private-network firewall rules for TCP ports 5173 and 8080; do not disable the firewall or expose these ports on a public network.
+
+This documents the LAN path; it does not certify that a particular network, firewall, or two-device setup has been tested. OrbitOS's static Vercel deployment does not host this service.
 
 ## Test with two browser clients
 

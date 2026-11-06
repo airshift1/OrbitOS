@@ -11,6 +11,7 @@ import {
   pauseGame,
   restartGame,
   resumeGame,
+  spawnFood,
   startGame,
   type GameState,
 } from "../apps/Snake/engine";
@@ -18,7 +19,7 @@ import {
 const constantRandom = () => 0;
 const stateWithFood = (score: number, foodScore = score + 1): GameState => {
   const base = createGameState(constantRandom);
-  const snake = [{ x: 8, y: 7 }, { x: 8, y: 8 }, { x: 8, y: 9 }];
+  const snake = [{ x: 8, y: 7 }, { x: 8, y: 8 }, { x: 8, y: 9 }, { x: 8, y: 10 }, { x: 8, y: 11 }];
   return {
     ...base,
     snake,
@@ -41,12 +42,19 @@ describe("Snake game engine", () => {
     expect(game.food!.y).toBeLessThan(BOARD_ROWS);
   });
 
+  it("does not spawn food in the rounded grid cell occupied by a moving snake segment", () => {
+    const food = spawnFood([{ x: 1.9, y: 0 }], () => 0.99, { columns: 3, rows: 1 });
+    expect(food).not.toEqual({ x: 2, y: 0 });
+  });
+
   it("uses the expanded configurable 120 by 80 world and checks collisions against that world", () => {
     const game = createGameState(constantRandom);
     expect(game.board).toEqual({ columns: 120, rows: 80 });
+    expect(game.snake).toHaveLength(5);
     const smaller = createGameState(constantRandom, { columns: 12, rows: 8 });
     expect(smaller.board).toEqual({ columns: 12, rows: 8 });
-    expect(smaller.snake[0]).toEqual({ x: 6, y: 4 });
+    expect(smaller.snake[0]).toEqual({ x: 6, y: 3 });
+    expect(smaller.snake.every((point) => point.x >= 0 && point.x < smaller.board.columns && point.y >= 0 && point.y < smaller.board.rows)).toBe(true);
     expect(smaller.food!.x).toBeLessThan(12);
     expect(smaller.food!.y).toBeLessThan(8);
     expect(advanceGame({
@@ -60,7 +68,7 @@ describe("Snake game engine", () => {
 
   it("grows, increments the cupcake score, and gradually increases speed", () => {
     const next = advanceGame(stateWithFood(0), constantRandom);
-    expect(next.snake).toHaveLength(4);
+    expect(next.snake).toHaveLength(6);
     expect(next.score).toBe(1);
     expect(getStepMs(next.score)).toBeLessThan(getStepMs(0));
     expect(getStepMs(1000)).toBe(110);
@@ -88,7 +96,7 @@ describe("Snake game engine", () => {
     const next = advanceGame(state, constantRandom);
     expect(next.status).toBe("celebrating");
     expect(next.score).toBe(26);
-    expect(next.snake).toHaveLength(4);
+    expect(next.snake).toHaveLength(6);
     expect(advanceGame(next, constantRandom)).toBe(next);
   });
 
@@ -114,6 +122,25 @@ describe("Snake game engine", () => {
       food: { x: 0, y: 0 },
     };
     expect(advanceGame(bodyCollision, constantRandom).status).toBe("gameover");
+  });
+
+  it("moves in fractional coordinates from elapsed frame time", () => {
+    const state = { ...createGameState(constantRandom), status: "playing" as const, food: { x: 0, y: 0 } };
+    const next = advanceGame(state, constantRandom, false, getStepMs(0) / 10);
+    expect(next.snake[0].x).toBeCloseTo(state.snake[0].x);
+    expect(next.snake[0].y).toBeCloseTo(state.snake[0].y - 0.1);
+  });
+
+  it("moves faster while boost is held and smoothly returns to baseline after release", () => {
+    const state = { ...createGameState(constantRandom), status: "playing" as const, food: { x: 0, y: 0 } };
+    const delta = 80;
+    const normal = advanceGame(state, constantRandom, false, delta);
+    const boosted = advanceGame(state, constantRandom, true, delta);
+    expect(boosted.snake[0].y).toBeLessThan(normal.snake[0].y);
+    expect(boosted.boostLevel).toBeGreaterThan(0);
+    const released = advanceGame({ ...boosted, food: { x: 0, y: 0 } }, constantRandom, false, 80);
+    expect(released.boostLevel).toBeLessThan(boosted.boostLevel);
+    expect(released.snake[0].y).toBeLessThan(boosted.snake[0].y);
   });
 
   it("rejects reverse turns and derives touch swipes consistently", () => {

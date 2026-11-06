@@ -5,8 +5,6 @@ import { getSnakeWebSocketUrl } from "./multiplayerConnection";
 import { useWindowStore } from "../../stores/useWindowStore";
 import { ClassicSnakeHead, Cupcake, UnicornHead } from "./SnakeArt";
 import type { UnicornSkin } from "./unicornSkins.js";
-import { appendHeadHistory, interpolateSnake } from "./motion";
-import { useSnakeSnapshotInterpolation } from "./useSnakeAnimation";
 import { useSnakeViewport } from "./useSnakeViewport";
 
 type ConnectionStatus = "connecting" | "connected" | "reconnecting" | "offline";
@@ -27,8 +25,8 @@ const DIRECTION_KEYS: Record<string, Direction> = {
 
 function pointStyle(point: Point, camera: Point, columns: number, rows: number): CSSProperties {
   return {
-    left: `${((point.x - camera.x) / columns) * 100}%`,
-    top: `${((point.y - camera.y) / rows) * 100}%`,
+    left: `${((point.x + 0.5 - camera.x) / columns) * 100}%`,
+    top: `${((point.y + 0.5 - camera.y) / rows) * 100}%`,
     width: `${100 / columns}%`,
     height: `${100 / rows}%`,
   };
@@ -264,8 +262,6 @@ export function SnakeMultiplayer({
   const [name, setName] = useState(() => storedValue(NAME_KEY) || "Player");
   const [roomCode, setRoomCode] = useState("");
   const swipeStart = useRef<Point | null>(null);
-  const headHistory = useRef<Record<string, Point[]>>({});
-  const previousSnapshot = useRef<RoomSnapshot | null>(null);
   const [boosting, setBoosting] = useState(false);
   const self = room.snapshot?.players.find((player) => player.id === room.selfId);
   const send = room.send;
@@ -278,8 +274,6 @@ export function SnakeMultiplayer({
   }), [focusHead.x, focusHead.y, room.snapshot?.columns, room.snapshot?.rows, viewport.columns, viewport.rows]);
   const isHost = self?.id === room.snapshot?.hostId;
   const isPlaying = room.snapshot?.status === "playing" && room.connectionStatus === "connected";
-  const stepMs = Math.max(125, 240 - Math.max(0, ...(room.snapshot?.players.map((player) => player.score) ?? [])) * 1.5);
-  const animationProgress = useSnakeSnapshotInterpolation(isPlaying, stepMs, room.snapshot);
   const rootStyle = {
     "--snake-accent": accentColor,
     "--snake-viewport-columns": viewport.columns,
@@ -296,27 +290,6 @@ export function SnakeMultiplayer({
     setBoosting(enabled);
     send({ type: "boost", active: enabled });
   };
-
-  useEffect(() => {
-    const current = room.snapshot;
-    const previous = previousSnapshot.current;
-    if (!current) {
-      headHistory.current = {};
-      previousSnapshot.current = null;
-      return;
-    }
-    const nextHistory: Record<string, Point[]> = {};
-    for (const player of current.players) {
-      const before = previous?.players.find((candidate) => candidate.id === player.id);
-      const path = headHistory.current[player.id] ?? [...player.segments];
-      nextHistory[player.id] = before && player.segments[0] &&
-        (before.segments[0]?.x !== player.segments[0].x || before.segments[0]?.y !== player.segments[0].y)
-        ? appendHeadHistory(path, before.segments[0], player.segments[0], player.segments.length)
-        : path;
-    }
-    headHistory.current = nextHistory;
-    previousSnapshot.current = current;
-  }, [room.snapshot]);
 
   useEffect(() => {
     if (isPlaying) return;
@@ -414,7 +387,7 @@ export function SnakeMultiplayer({
                 tabIndex={0}
                 role="application"
                 aria-label="Multiplayer Snake board. Use arrow keys or WASD to steer."
-                onPointerDown={(event) => { event.currentTarget.focus(); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
+                onPointerDown={(event) => { event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={() => { swipeStart.current = null; }}
               >
@@ -428,9 +401,13 @@ export function SnakeMultiplayer({
                 }}
                 aria-hidden="true"
               />
-              <div className="snake__grid snake-multi__grid" aria-hidden="true">
+              <div
+                className="snake__grid snake-multi__grid"
+                aria-hidden="true"
+                style={{ backgroundPosition: `${-(camera.x * viewport.width / viewport.columns)}px ${-(camera.y * viewport.height / viewport.rows)}px` }}
+              >
                 {room.snapshot?.players.map((player) => (
-                  <PlayerSnake key={player.id} player={player} segments={interpolateSnake(headHistory.current[player.id] ?? player.segments, player.segments, animationProgress)} selfId={room.selfId} camera={camera} viewport={viewport} visualMode={visualMode} unicornSkin={unicornSkin} />
+                  <PlayerSnake key={player.id} player={player} segments={player.segments} selfId={room.selfId} camera={camera} viewport={viewport} visualMode={visualMode} unicornSkin={unicornSkin} />
                 ))}
                 {room.snapshot?.food && <Food point={room.snapshot.food} camera={camera} viewport={viewport} visualMode={visualMode} />}
                 {room.snapshot?.specialFood && <Food point={room.snapshot.specialFood} camera={camera} viewport={viewport} visualMode={visualMode} special />}
@@ -480,8 +457,8 @@ export function SnakeMultiplayer({
                   {value === "up" ? "↑" : value === "right" ? "→" : value === "down" ? "↓" : "←"}
                 </button>
               ))}
-              <span>Arrow keys / WASD · swipe on touch</span>
-              <button type="button" className={`snake-arcade__boost ${boosting ? "is-active" : ""}`} aria-pressed={boosting} disabled={!isPlaying} title="Hold: two pickups add one segment. The server keeps score unchanged." onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); setBoost(true); }} onPointerUp={() => setBoost(false)} onPointerCancel={() => setBoost(false)} onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); setBoost(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") setBoost(false); }}>BOOST</button>
+              <span>Arrow keys / WASD · swipe on touch · hold BOOST to move faster</span>
+              <button type="button" className={`snake-arcade__boost ${boosting ? "is-active" : ""}`} aria-pressed={boosting} disabled={!isPlaying} title="Hold to move faster; two pickups add one segment. The server keeps score unchanged." onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); setBoost(true); }} onPointerUp={() => setBoost(false)} onPointerCancel={() => setBoost(false)} onLostPointerCapture={() => setBoost(false)} onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); setBoost(true); } }} onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") setBoost(false); }}>BOOST</button>
             </div>
           </section>
           <aside className="snake-multi__sidebar">

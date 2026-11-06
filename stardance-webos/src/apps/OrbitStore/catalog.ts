@@ -203,6 +203,32 @@ export function getStoreAction(
   return installed ? "open" : "add-to-library";
 }
 
+export function getStoreActionLabel(action: StoreAction): string {
+  switch (action) {
+    case "open": return "Open in OrbitOS";
+    case "add-to-library": return "Add to Orbit library";
+    case "visit-website": return "Visit Website";
+    case "download": return "Visit download page";
+  }
+}
+
+export function getStoreCompatibility(listing: StoreListing): string {
+  switch (listing.kind) {
+    case "bundled": return "Runs in an OrbitOS application window";
+    case "web": return "Modern web browser; opens in a new tab";
+    case "desktop": return "Native desktop software; choose a compatible OS build on the publisher site";
+  }
+}
+
+export function getStoreStatus(listing: StoreListing, installed = false): string {
+  if (listing.kind === "bundled") {
+    return installed ? "Installed · Launches in OrbitOS" : "Bundled · Not in your library";
+  }
+  return listing.kind === "web"
+    ? "Web app · Opens on publisher website"
+    : "Not installed · Publisher download page only";
+}
+
 export function getStoreActionUrl(listing: StoreListing): string | null {
   const candidate = listing.kind === "desktop" ? listing.downloadUrl : listing.websiteUrl;
   return safeHttpUrl(candidate);

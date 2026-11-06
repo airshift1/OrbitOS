@@ -26,7 +26,6 @@ import {
   type Point,
 } from "./engine";
 import "./Snake.css";
-import { appendHeadHistory, interpolateSnake } from "./motion";
 import { useSnakeAnimation } from "./useSnakeAnimation";
 import { useSnakeViewport } from "./useSnakeViewport";
 
@@ -46,8 +45,8 @@ const DIRECTIONS: Direction[] = ["up", "right", "down", "left"];
 
 function pointStyle(point: Point, camera: Point, columns = VIEWPORT_COLUMNS, rows = VIEWPORT_ROWS): CSSProperties {
   return {
-    left: `${((point.x - camera.x) / columns) * 100}%`,
-    top: `${((point.y - camera.y) / rows) * 100}%`,
+    left: `${((point.x + 0.5 - camera.x) / columns) * 100}%`,
+    top: `${((point.y + 0.5 - camera.y) / rows) * 100}%`,
     width: `${100 / columns}%`,
     height: `${100 / rows}%`,
   };
@@ -79,7 +78,6 @@ export function Snake({ windowId }: AppProps) {
   const playAreaRef = useRef<HTMLDivElement>(null);
   const viewport = useSnakeViewport(playAreaRef, playMode === "unicorn");
   const swipeStart = useRef<Point | null>(null);
-  const historyRef = useRef<Point[]>([...game.snake]);
   const boostingRef = useRef(false);
   const [boosting, setBoosting] = useState(false);
   const particleId = useRef(0);
@@ -98,6 +96,12 @@ export function Snake({ windowId }: AppProps) {
     setGame(next);
   }, []);
 
+  const setBoostActive = (active: boolean) => {
+    const allowed = active && gameRef.current.status === "playing";
+    boostingRef.current = allowed;
+    setBoosting(allowed);
+  };
+
   const reset = useCallback(() => {
     particleTimers.current.forEach((timer) => window.clearTimeout(timer));
     particleTimers.current = [];
@@ -106,7 +110,6 @@ export function Snake({ windowId }: AppProps) {
     boostingRef.current = false;
     setBoosting(false);
     const restarted = restartGame(Math.random, arena);
-    historyRef.current = [...restarted.snake];
     commit(restarted);
     boardRef.current?.focus();
   }, [arena, commit]);
@@ -134,12 +137,9 @@ export function Snake({ windowId }: AppProps) {
     particleTimers.current.push(timer);
   }, []);
 
-  const tick = useCallback(() => {
+  const tick = useCallback((deltaMs: number) => {
     const before = gameRef.current;
-    const next = advanceGame(before, Math.random, boostingRef.current);
-    if (next.snake[0].x !== before.snake[0].x || next.snake[0].y !== before.snake[0].y) {
-      historyRef.current = appendHeadHistory(historyRef.current, before.snake[0], next.snake[0], next.snake.length);
-    }
+    const next = advanceGame(before, Math.random, boostingRef.current, deltaMs);
     if (next.score > before.score) {
       setBestScore((current) => Math.max(current, next.score));
       try { localStorage.setItem(UNICORN_BEST_KEY, String(next.score)); } catch { /* Saved scores are optional. */ }
@@ -147,13 +147,8 @@ export function Snake({ windowId }: AppProps) {
     }
     commit(next);
   }, [burst, commit, visualMode]);
-  const animationProgress = useSnakeAnimation(playMode === "unicorn" && game.status === "playing", getStepMs(game.score), tick);
-  const renderedSnake = interpolateSnake(historyRef.current, game.snake, animationProgress);
-  const setBoostActive = (active: boolean) => {
-    const allowed = active && gameRef.current.status === "playing";
-    boostingRef.current = allowed;
-    setBoosting(allowed);
-  };
+  useSnakeAnimation(playMode === "unicorn" && game.status === "playing", tick);
+  const renderedSnake = game.snake;
 
   useEffect(() => {
     if (playMode !== "unicorn" || game.status !== "playing") setBoostActive(false);
@@ -255,6 +250,9 @@ export function Snake({ windowId }: AppProps) {
   const camera = {
     x: Math.max(0, Math.min(game.board.columns - viewColumns, nextHead.x - Math.floor(viewColumns / 2))),
     y: Math.max(0, Math.min(game.board.rows - viewRows, nextHead.y - Math.floor(viewRows / 2))),
+  };
+  const gridStyle: CSSProperties = {
+    backgroundPosition: `${-(camera.x * viewport.width / viewColumns)}px ${-(camera.y * viewport.height / viewRows)}px`,
   };
 
   if (playMode === "menu") {
@@ -375,6 +373,7 @@ export function Snake({ windowId }: AppProps) {
           aria-label={`Snake game board. ${game.score} ${visualMode === "unicorn" ? "cupcakes collected" : "points"}. Use arrow keys or WASD to steer.`}
           onPointerDown={(event) => {
             boardRef.current?.focus();
+            event.currentTarget.setPointerCapture(event.pointerId);
             handlePointerDown(event);
           }}
           onPointerUp={handlePointerUp}
@@ -390,7 +389,7 @@ export function Snake({ windowId }: AppProps) {
             }}
             aria-hidden="true"
           />
-          <div className="snake__grid" aria-hidden="true">
+          <div className="snake__grid" aria-hidden="true" style={gridStyle}>
             {game.snake.slice(1).map((segment, index) => (
               <div
                 key={`segment-${index}`}
@@ -511,8 +510,8 @@ export function Snake({ windowId }: AppProps) {
           ) : null}
           <button type="button" onClick={reset}>Restart</button>
           <button type="button" className={`snake__boost ${boosting ? "is-active" : ""}`} aria-pressed={boosting} title="Hold BOOST: every two snacks add one unit of growth. Score is unchanged." disabled={game.status !== "playing"}
-            onPointerDown={(event) => { event.preventDefault(); setBoostActive(true); }}
-            onPointerUp={() => setBoostActive(false)} onPointerCancel={() => setBoostActive(false)} onPointerLeave={() => setBoostActive(false)}
+            onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); setBoostActive(true); }}
+            onPointerUp={() => setBoostActive(false)} onPointerCancel={() => setBoostActive(false)} onLostPointerCapture={() => setBoostActive(false)}
             onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); setBoostActive(true); } }}
             onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") setBoostActive(false); }}>BOOST</button>
         </div>

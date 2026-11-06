@@ -4,13 +4,13 @@ import { advanceClassic, advanceVersus, classicStepMs, createClassicState, creat
 const fixedRandom = () => 0;
 
 describe("Classic Snake rules", () => {
-  it("starts with a three-cell snake and scores/grows only when food is collected", () => {
+  it("starts with five connected segments and scores/grows only when food is collected", () => {
     const state = createClassicState("normal", fixedRandom, { columns: 10, rows: 8 });
-    expect(state.snake).toHaveLength(3);
+    expect(state.snake).toHaveLength(5);
     const ready = { ...state, status: "playing" as const, food: { x: state.snake[0].x + 1, y: state.snake[0].y } };
     const next = advanceClassic(ready, fixedRandom);
     expect(next.score).toBe(1);
-    expect(next.snake).toHaveLength(4);
+    expect(next.snake).toHaveLength(6);
     expect(next.snake[0]).toEqual(ready.food);
     expect(classicStepMs({ score: 10, difficulty: "hard" })).toBeLessThan(classicStepMs({ score: 0, difficulty: "easy" }));
   });
@@ -38,7 +38,7 @@ describe("local two-player VS Snake rules", () => {
     const playing: VersusState = { ...state, status: "playing", food: { x: one.snake[0].x - 1, y: one.snake[0].y } };
     const next = advanceVersus(playing, fixedRandom);
     expect(next.players[0].score).toBe(1);
-    expect(next.players[0].snake).toHaveLength(4);
+    expect(next.players[0].snake).toHaveLength(6);
     expect(next.players[1].score).toBe(0);
     expect(next.players[1].alive).toBe(true);
     expect(two.id).toBe("two");
@@ -50,12 +50,29 @@ describe("local two-player VS Snake rules", () => {
     const firstFood = { x: one.snake[0].x - 1, y: one.snake[0].y };
     const first = advanceVersus({ ...state, status: "playing", food: firstFood }, fixedRandom, { one: true });
     expect(first.players[0]).toMatchObject({ score: 1, growthProgress: 0.5 });
-    expect(first.players[0].snake).toHaveLength(3);
+    expect(first.players[0].snake).toHaveLength(5);
     const secondFood = { x: one.snake[0].x - 2, y: one.snake[0].y };
     const second = advanceVersus({ ...first, food: secondFood }, fixedRandom, { one: true });
     expect(second.players[0]).toMatchObject({ score: 2, growthProgress: 0 });
-    expect(second.players[0].snake).toHaveLength(4);
+    expect(second.players[0].snake).toHaveLength(6);
     expect(second.players[1].snake).toEqual(two.snake.map((point) => ({ x: point.x + 2, y: point.y })));
+  });
+
+  it("accelerates Classic and VS movement while held and releases boost smoothly", () => {
+    const classic = createClassicState("normal", fixedRandom);
+    const classicPlaying = { ...classic, status: "playing" as const, food: { x: 0, y: 0 } };
+    const normalClassic = advanceClassic(classicPlaying, fixedRandom, false, 80);
+    const boostedClassic = advanceClassic(classicPlaying, fixedRandom, true, 80);
+    expect(boostedClassic.snake[0].x).toBeGreaterThan(normalClassic.snake[0].x);
+    const releasedClassic = advanceClassic({ ...boostedClassic, food: { x: 0, y: 0 } }, fixedRandom, false, 80);
+    expect(releasedClassic.boostLevel).toBeLessThan(boostedClassic.boostLevel);
+
+    const versus = createVersusState(fixedRandom);
+    const versusPlaying: VersusState = { ...versus, status: "playing", food: { x: 0, y: 0 } };
+    const normalVersus = advanceVersus(versusPlaying, fixedRandom, {}, 80);
+    const boostedVersus = advanceVersus(versusPlaying, fixedRandom, { one: true }, 80);
+    expect(boostedVersus.players[0].snake[0].x).toBeLessThan(normalVersus.players[0].snake[0].x);
+    expect(boostedVersus.players[0].boostLevel).toBeGreaterThan(0);
   });
 
   it("ends in a draw when both players collide on the same move", () => {

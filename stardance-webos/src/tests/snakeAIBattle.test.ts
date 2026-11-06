@@ -15,19 +15,51 @@ describe("Snake AI Battle", () => {
     expect(first).toEqual(second);
     expect(first.players).toHaveLength(5);
     expect(first.players.filter((player) => player.bot)).toHaveLength(4);
-    expect(first.players.every((player) => player.alive && player.snake.length === 3)).toBe(true);
+    expect(first.players.every((player) => player.alive && player.snake.length === 5)).toBe(true);
     expect(first.board).toEqual(board);
+    const compact = createAIBattleState("normal", fixedRandom, { columns: 20, rows: 12 }, 1);
+    expect(compact.players.every((player) =>
+      player.snake.every((point) => point.x >= 0 && point.x < compact.board.columns && point.y >= 0 && point.y < compact.board.rows),
+    )).toBe(true);
   });
 
-  it("prevents human reverse turns and makes bots pursue food and predicted routes", () => {
+  it("prevents human reverse turns and safely pursues nearby food", () => {
     const initial = createAIBattleState("expert", fixedRandom, { columns: 20, rows: 12 }, 1);
     const human = { ...initial.players[0], snake: [{ x: 14, y: 4 }, { x: 13, y: 4 }, { x: 12, y: 4 }], direction: "right" as const };
     const bot = { ...initial.players[1], snake: [{ x: 4, y: 4 }, { x: 3, y: 4 }, { x: 2, y: 4 }], direction: "right" as const };
-    const state: AIBattleState = { ...initial, players: [human, bot], food: { x: 0, y: 0 } };
+    const state: AIBattleState = { ...initial, players: [human, bot], food: { x: 8, y: 4 } };
 
     expect(setAIBattleDirection(state, "left")).toBe(state);
-    expect(chooseBotDirection(state, bot.id, fixedRandom)).toBe("up");
+    expect(chooseBotDirection(state, bot.id, fixedRandom)).toBe("right");
     expect(setAIBattleDirection(state, "up").players[0].nextDirection).toBe("up");
+  });
+
+  it("uses predicted intercepts against smaller rivals without sacrificing basic safety", () => {
+    const initial = createAIBattleState("expert", fixedRandom, { columns: 30, rows: 40 }, 1);
+    const bot = {
+      ...initial.players[1],
+      snake: Array.from({ length: 9 }, (_, index) => ({ x: 8 - index, y: 16 })),
+      direction: "right" as const,
+    };
+    const smallerRival = {
+      ...initial.players[0],
+      snake: Array.from({ length: 5 }, (_, index) => ({ x: 20, y: 23 + index })),
+      direction: "up" as const,
+    };
+    const interceptState: AIBattleState = { ...initial, players: [smallerRival, bot], food: { x: 1, y: 1 } };
+    expect(chooseBotDirection(interceptState, bot.id, fixedRandom)).toBe("right");
+
+    const dangerous = {
+      ...initial.players[0],
+      snake: Array.from({ length: 12 }, (_, index) => ({ x: 8 - index, y: 8 })),
+      direction: "left" as const,
+    };
+    const retreatState: AIBattleState = {
+      ...initial,
+      players: [dangerous, { ...bot, snake: [{ x: 5, y: 8 }, { x: 4, y: 8 }, { x: 3, y: 8 }] }],
+      food: { x: 20, y: 15 },
+    };
+    expect(chooseBotDirection(retreatState, bot.id, fixedRandom)).not.toBe("right");
   });
 
   it("scores boosted food normally but requires two pickups for one segment", () => {

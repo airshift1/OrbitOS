@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, ChevronLeft, Gamepad2, Settings2, Sparkles, Volume2, VolumeX, Zap } from "lucide-react";
 import type { ThemeName } from "../../types";
-import type { Direction, Point } from "./engine";
+import type { Direction } from "./engine";
 import {
   advanceClassic,
   advanceVersus,
@@ -18,7 +18,6 @@ import {
 } from "./localEngines";
 import { advanceAIBattle, createAIBattleState, setAIBattleDirection, type AIBattleState } from "./aiBattle";
 import { ARENA_PRESETS, boardForArena, readClassicHighScores, recordClassicHighScore, saveSnakePreferences, type ArenaSize, type SnakePreferences } from "./snakePreferences";
-import { appendHeadHistory, interpolateSnake } from "./motion";
 import { ClassicSnakeHead } from "./SnakeArt";
 import { useSnakeAnimation } from "./useSnakeAnimation";
 import { useSnakeViewport } from "./useSnakeViewport";
@@ -84,8 +83,8 @@ function Cell({ point, camera, className, children, color }: {
   color?: string;
 }) {
   const style: CSSProperties = {
-    left: `${((point.x - camera.x) / camera.columns) * 100}%`,
-    top: `${((point.y - camera.y) / camera.rows) * 100}%`,
+    left: `${((point.x + 0.5 - camera.x) / camera.columns) * 100}%`,
+    top: `${((point.y + 0.5 - camera.y) / camera.rows) * 100}%`,
     width: `${100 / camera.columns}%`,
     height: `${100 / camera.rows}%`,
     ...(color ? { "--local-snake-color": color } as CSSProperties : {}),
@@ -209,9 +208,6 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
   const viewport = useSnakeViewport(stageRef);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const recordedRef = useRef(false);
-  const classicHistory = useRef<Point[]>([...classic.snake]);
-  const versusHistory = useRef<Point[][]>(versus.players.map((player) => [...player.snake]));
-  const aiBattleHistory = useRef<Point[][]>(aiBattle.players.map((player) => [...player.snake]));
   const boostRef = useRef({ one: false, two: false });
   const [boostState, setBoostState] = useState({ one: false, two: false });
   const sound = useScoreSound(preferences.sound);
@@ -238,44 +234,28 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
   useEffect(() => {
     aiBattleRef.current = aiBattle;
   }, [aiBattle]);
-  const tick = () => {
+  const tick = (deltaMs: number) => {
     if (isVersus) {
       const before = versusRef.current;
-      const after = advanceVersus(before, Math.random, boostRef.current);
-      after.players.forEach((player, index) => {
-        if (player.snake[0].x !== before.players[index].snake[0].x || player.snake[0].y !== before.players[index].snake[0].y) {
-          versusHistory.current[index] = appendHeadHistory(versusHistory.current[index], before.players[index].snake[0], player.snake[0], player.snake.length);
-        }
-      });
+      const after = advanceVersus(before, Math.random, boostRef.current, deltaMs);
       if (after.players.some((player, index) => player.score > before.players[index].score)) playScoreSound();
       versusRef.current = after;
       setVersus(after);
     } else if (isAIBattle) {
       const before = aiBattleRef.current;
-      const after = advanceAIBattle(before, Math.random, boostRef.current.one);
-      after.players.forEach((player, index) => {
-        if (player.snake[0].x !== before.players[index].snake[0].x || player.snake[0].y !== before.players[index].snake[0].y) {
-          aiBattleHistory.current[index] = appendHeadHistory(aiBattleHistory.current[index] ?? [...before.players[index].snake], before.players[index].snake[0], player.snake[0], player.snake.length);
-        }
-      });
+      const after = advanceAIBattle(before, Math.random, boostRef.current.one, deltaMs);
       if (after.players.some((player, index) => player.score > before.players[index].score)) playScoreSound();
       aiBattleRef.current = after;
       setAIBattle(after);
     } else {
       const before = classicRef.current;
-      const after = advanceClassic(before, Math.random, boostRef.current.one);
-      if (after.snake[0].x !== before.snake[0].x || after.snake[0].y !== before.snake[0].y) {
-        classicHistory.current = appendHeadHistory(classicHistory.current, before.snake[0], after.snake[0], after.snake.length);
-      }
+      const after = advanceClassic(before, Math.random, boostRef.current.one, deltaMs);
       if (after.score > before.score) playScoreSound();
       classicRef.current = after;
       setClassic(after);
     }
   };
-  const animationProgress = useSnakeAnimation(currentStatus === "playing", localStepMs, tick);
-  const renderedClassic = interpolateSnake(classicHistory.current, classic.snake, animationProgress);
-  const renderedVersus = versus.players.map((player, index) => interpolateSnake(versusHistory.current[index], player.snake, animationProgress));
-  const renderedAIBattle = aiBattle.players.map((player, index) => interpolateSnake(aiBattleHistory.current[index] ?? player.snake, player.snake, animationProgress));
+  useSnakeAnimation(currentStatus === "playing", tick);
   useEffect(() => {
     if (isVersus || classic.status !== "gameover" || recordedRef.current) return;
     recordedRef.current = true;
@@ -310,15 +290,12 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
     setBoostState({ one: false, two: false });
     if (isVersus) {
       const restarted = createVersusState(Math.random, arena);
-      versusHistory.current = restarted.players.map((player) => [...player.snake]);
       updateVersus(restarted);
     } else if (isAIBattle) {
       const restarted = createAIBattleState(preferences.aiDifficulty, Math.random, arena);
-      aiBattleHistory.current = restarted.players.map((player) => [...player.snake]);
       updateAIBattle(restarted);
     } else {
       const restarted = createClassicState(preferences.difficulty, Math.random, arena);
-      classicHistory.current = [...restarted.snake];
       updateClassic(restarted);
     }
     boardRef.current?.focus();
@@ -408,10 +385,13 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
         y: Math.round((versus.players[0].snake[0].y + versus.players[1].snake[0].y) / 2),
       }
     : isAIBattle
-      ? renderedAIBattle[0]?.[0] ?? aiBattle.players[0].snake[0]
-    : renderedClassic[0] ?? classic.snake[0];
+      ? aiBattle.players[0].snake[0]
+    : classic.snake[0];
   const activeBoard = isVersus ? versus.board : isAIBattle ? aiBattle.board : classic.board;
   const camera = clampCamera(head, activeBoard.columns, activeBoard.rows, viewport);
+  const gridStyle: CSSProperties = {
+    backgroundPosition: `${-(camera.x * viewport.width / camera.columns)}px ${-(camera.y * viewport.height / camera.rows)}px`,
+  };
   const score = isVersus ? versus.players.reduce((sum, player) => sum + player.score, 0) : isAIBattle ? aiBattle.players[0].score : classic.score;
   const length = isVersus ? versus.players.reduce((sum, player) => sum + player.snake.length, 0) : isAIBattle ? aiBattle.players[0].snake.length : classic.snake.length;
   const style = {
@@ -423,15 +403,13 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
   } as CSSProperties;
   const snacks = isVersus
     ? versus.players.filter((player) => player.alive).map((player) => {
-        const playerIndex = versus.players.indexOf(player);
-        return player.snake.map((point, index) => <Cell key={`${player.id}-${index}`} point={renderedVersus[playerIndex][index] ?? point} camera={camera} color={player.color} className={index === 0 ? `snake__head snake-local__head snake-local__head--${player.id}` : `snake__segment snake-local__segment ${index === player.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={player.direction} />}</Cell>);
+        return player.snake.map((point, index) => <Cell key={`${player.id}-${index}`} point={point} camera={camera} color={player.color} className={index === 0 ? `snake__head snake-local__head snake-local__head--${player.id}` : `snake__segment snake-local__segment ${index === player.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={player.direction} />}</Cell>);
       })
     : isAIBattle
       ? aiBattle.players.filter((player) => player.alive).map((player) => {
-          const playerIndex = aiBattle.players.indexOf(player);
-          return player.snake.map((point, index) => <Cell key={`${player.id}-${index}`} point={renderedAIBattle[playerIndex][index] ?? point} camera={camera} color={player.color} className={`snake-local__segment snake-ai__segment ${index === 0 ? "snake__head snake-local__head snake-ai__head" : ""} ${index === player.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={player.direction} />}</Cell>);
+          return player.snake.map((point, index) => <Cell key={`${player.id}-${index}`} point={point} camera={camera} color={player.color} className={`snake-local__segment snake-ai__segment ${index === 0 ? "snake__head snake-local__head snake-ai__head" : ""} ${index === player.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={player.direction} />}</Cell>);
         })
-    : classic.snake.map((point, index) => <Cell key={`classic-${index}`} point={renderedClassic[index] ?? point} camera={camera} className={index === 0 ? "snake__head snake-local__head" : `snake__segment snake-local__segment ${index === classic.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={classic.direction} />}</Cell>);
+    : classic.snake.map((point, index) => <Cell key={`classic-${index}`} point={point} camera={camera} className={index === 0 ? "snake__head snake-local__head" : `snake__segment snake-local__segment ${index === classic.snake.length - 1 ? "snake-local__tail" : ""}`}>{index === 0 && <ClassicSnakeHead direction={classic.direction} />}</Cell>);
   const food = isVersus ? versus.food : isAIBattle ? aiBattle.food : classic.food;
   const winnerName = isVersus
     ? versus.winner === "draw" ? "It’s a draw!" : versus.players.find((player) => player.id === versus.winner)?.name ?? "Round over"
@@ -477,7 +455,7 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
           tabIndex={0}
           role="application"
           aria-label={isVersus ? "Two-player Snake. Player one uses WASD, player two uses arrow keys." : isAIBattle ? "AI Battle. Use arrow keys or WASD to outlast the computer-controlled snakes." : "Classic Snake. Use arrow keys or WASD to steer."}
-          onPointerDown={(event) => { boardRef.current?.focus(); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
+          onPointerDown={(event) => { boardRef.current?.focus(); event.currentTarget.setPointerCapture(event.pointerId); swipeStart.current = { x: event.clientX, y: event.clientY }; }}
           onPointerUp={(event) => {
             if (isVersus) return;
             const startPoint = swipeStart.current;
@@ -490,7 +468,7 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
           }}
           onPointerCancel={() => { swipeStart.current = null; }}
         >
-          <div className="snake__grid" aria-hidden="true">
+          <div className="snake__grid" aria-hidden="true" style={gridStyle}>
             {snacks}
             {food && <Cell point={food} camera={camera} className="snake__food snake__food--classic"><span /></Cell>}
           </div>
@@ -517,16 +495,16 @@ export function SnakeLocalGame({ mode, accentColor, theme, preferences, onPrefer
       </section>
       <footer className="snake-arcade__bottom">
         <DirectionPad disabled={!isPlaying} onMove={(direction) => steer(direction)} />
-        <div className="snake-arcade__footnote">{isVersus ? <><span>P1: <b>W A S D / left Shift</b></span><span>P2: <b>arrows / right Shift</b></span></> : <><span>Steer: <b>Arrow keys / WASD</b></span><span>Hold BOOST: two food for one segment</span></>}</div>
+        <div className="snake-arcade__footnote">{isVersus ? <><span>P1: <b>W A S D / left Shift</b></span><span>P2: <b>arrows / right Shift</b></span></> : <><span>Steer: <b>Arrow keys / WASD</b></span><span>Hold BOOST to move faster; two food for one segment</span></>}</div>
         <div className="snake-arcade__actions">
           {isVersus ? (["one", "two"] as const).map((player) => <button key={player} type="button" className={`snake-arcade__boost ${boostState[player] ? "is-active" : ""}`} aria-pressed={boostState[player]} title="Hold: two food pickups add one segment; score is unchanged." disabled={!isPlaying}
             onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); holdBoost(player, true); }}
-            onPointerUp={() => holdBoost(player, false)} onPointerCancel={() => holdBoost(player, false)}
+            onPointerUp={() => holdBoost(player, false)} onPointerCancel={() => holdBoost(player, false)} onLostPointerCapture={() => holdBoost(player, false)}
             onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); holdBoost(player, true); } }}
             onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") holdBoost(player, false); }}>{player === "one" ? "P1 BOOST" : "P2 BOOST"}</button>)
             : <button type="button" className={`snake-arcade__boost ${boostState.one ? "is-active" : ""}`} aria-pressed={boostState.one} title="Hold: two food pickups add one segment; score is unchanged." disabled={!isPlaying}
               onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); holdBoost("one", true); }}
-              onPointerUp={() => holdBoost("one", false)} onPointerCancel={() => holdBoost("one", false)}
+              onPointerUp={() => holdBoost("one", false)} onPointerCancel={() => holdBoost("one", false)} onLostPointerCapture={() => holdBoost("one", false)}
               onKeyDown={(event) => { if (event.key === " " || event.key === "Enter") { event.preventDefault(); holdBoost("one", true); } }}
               onKeyUp={(event) => { if (event.key === " " || event.key === "Enter") holdBoost("one", false); }}>BOOST</button>}
           {isPlaying || currentStatus === "paused" ? <button type="button" onClick={pauseToggle}>{isPlaying ? "Pause" : "Resume"}</button> : currentStatus === "ready" ? <button type="button" onClick={start}>Start</button> : null}

@@ -10,7 +10,11 @@ export function ClassicSnakeHead({ direction }: { direction: Direction }) {
   return (
     <svg className="snake__classic-head-art" viewBox="0 0 40 40" aria-hidden="true" style={{ transform: `rotate(${DIRECTION_ANGLE[direction]}deg)` }}>
       <path d="M20 2C10 2 3 10 3 20s7 18 17 18 17-8 17-18S30 2 20 2Z" />
-      <path className="snake__classic-eye" d="M12 15v4m16-4v4" />
+      <path className="snake__classic-nose" d="m20 4 5 7H15l5-7Z" />
+      <circle className="snake__classic-eye" cx="13" cy="17" r="2" />
+      <circle className="snake__classic-eye" cx="27" cy="17" r="2" />
+      <circle className="snake__classic-eye-glint" cx="13.6" cy="16.4" r=".65" />
+      <circle className="snake__classic-eye-glint" cx="27.6" cy="16.4" r=".65" />
       <path className="snake__classic-mouth" d="M15 25c3 4 7 4 10 0" />
     </svg>
   );

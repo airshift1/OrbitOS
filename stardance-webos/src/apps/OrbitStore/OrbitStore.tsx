@@ -34,6 +34,10 @@ import { notify } from "../../stores/useNotificationStore";
 import {
   getStoreListing,
   getStoreAction,
+  getStoreActionLabel,
+  getStoreCompatibility,
+  getStoreStatus,
+  getStoreActionUrl,
   isStoreListingInstalled,
   openStoreExternalLink,
   searchStoreCatalog,
@@ -84,19 +88,13 @@ function listing(id: string): StoreListing | undefined {
   return getStoreListing(id);
 }
 
-function AppCard({ item, installed, onOpen, onAction, onUninstall }: {
+function AppCard({ item, installed, onOpen, onUninstall }: {
   item: StoreListing;
   installed: boolean;
   onOpen: (id: string) => void;
-  onAction: (item: StoreListing) => void;
   onUninstall: (item: StoreListing) => void;
 }) {
   const { category } = item;
-  const action = getStoreAction(item, installed);
-  const actionLabel = action === "open" ? "Open"
-    : action === "visit-website" ? "Visit Website"
-      : action === "download" ? "Download"
-        : "Add to library";
   return (
     <article className="orbit-store__card">
       <button type="button" className="orbit-store__card-main" onClick={() => onOpen(item.id)} aria-label={`View details for ${item.name}`}>
@@ -116,7 +114,7 @@ function AppCard({ item, installed, onOpen, onAction, onUninstall }: {
           {installed ? "Installed" : item.kind === "web" ? "Web app" : item.kind === "desktop" ? "Desktop download" : "Bundled"}
         </span>
         <span className="orbit-store__card-actions">
-          <Button size="sm" onClick={() => onAction(item)}>{actionLabel}</Button>
+          <Button size="sm" onClick={() => onOpen(item.id)}>Details</Button>
           {installed && item.app && !REQUIRED_APP_IDS.includes(item.app.id) && <Button variant="quiet" size="sm" onClick={() => onUninstall(item)}>Remove</Button>}
         </span>
       </div>
@@ -124,14 +122,13 @@ function AppCard({ item, installed, onOpen, onAction, onUninstall }: {
   );
 }
 
-function Shelf({ title, note, items, onOpen, onSeeAll, isInstalled, onAction, onUninstall }: {
+function Shelf({ title, note, items, onOpen, onSeeAll, isInstalled, onUninstall }: {
   title: string;
   note?: string;
   items: StoreListing[];
   onOpen: (id: string) => void;
   onSeeAll?: () => void;
   isInstalled: (item: StoreListing) => boolean;
-  onAction: (item: StoreListing) => void;
   onUninstall: (item: StoreListing) => void;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -171,18 +168,17 @@ function Shelf({ title, note, items, onOpen, onSeeAll, isInstalled, onAction, on
         </div>
       </div>
       <div className="orbit-store__shelf-track" ref={trackRef} onScroll={updateScrollControls}>
-        {items.map((item) => <AppCard key={item.id} item={item} installed={isInstalled(item)} onOpen={onOpen} onAction={onAction} onUninstall={onUninstall} />)}
+        {items.map((item) => <AppCard key={item.id} item={item} installed={isInstalled(item)} onOpen={onOpen} onUninstall={onUninstall} />)}
       </div>
     </section>
   );
 }
 
-function CatalogGrid({ items, onOpen, onSearchReset, emptyTitle, emptyMessage, isInstalled, onAction, onUninstall }: {
+function CatalogGrid({ items, onOpen, onSearchReset, emptyTitle, emptyMessage, isInstalled, onUninstall }: {
   items: StoreListing[];
   onOpen: (id: string) => void;
   onSearchReset?: () => void;
   isInstalled: (item: StoreListing) => boolean;
-  onAction: (item: StoreListing) => void;
   onUninstall: (item: StoreListing) => void;
   emptyTitle?: string;
   emptyMessage?: string;
@@ -194,7 +190,7 @@ function CatalogGrid({ items, onOpen, onSearchReset, emptyTitle, emptyMessage, i
       </EmptyState>
     );
   }
-  return <div className="orbit-store__grid">{items.map((item) => <AppCard key={item.id} item={item} installed={isInstalled(item)} onOpen={onOpen} onAction={onAction} onUninstall={onUninstall} />)}</div>;
+  return <div className="orbit-store__grid">{items.map((item) => <AppCard key={item.id} item={item} installed={isInstalled(item)} onOpen={onOpen} onUninstall={onUninstall} />)}</div>;
 }
 
 export function OrbitStore(_props: AppProps) {
@@ -244,6 +240,16 @@ export function OrbitStore(_props: AppProps) {
       installApp(item.app.id);
       return;
     }
+    if (action === "download") {
+      const destination = getStoreActionUrl(item);
+      if (!destination) {
+        notify({ title: "Official download page unavailable", body: "This listing does not have a validated publisher destination.", kind: "error", appId: "orbit-store" });
+        return;
+      }
+      if (!window.confirm(
+        `${item.name} will open its official publisher download page:\n${destination}\n\nThis is a web page, not a direct installer download. Choose a compatible file type and operating-system build on the publisher site. OrbitOS will not download or run software.`,
+      )) return;
+    }
     if (!openStoreExternalLink(item)) {
       notify({ title: "Official link unavailable", body: "Orbit Store could not open this publisher link. Check your browser's popup settings.", kind: "error", appId: "orbit-store" });
       return;
@@ -257,7 +263,7 @@ export function OrbitStore(_props: AppProps) {
       appId: "orbit-store",
     });
   };
-  const appCardProps = { isInstalled, onAction: performPrimaryAction, onUninstall: uninstallApp };
+  const appCardProps = { isInstalled, onUninstall: uninstallApp };
   const navigate = (nextPage: StorePage) => {
     setPage(nextPage);
     setSelectedApp(null);
@@ -268,6 +274,7 @@ export function OrbitStore(_props: AppProps) {
   };
 
   const detail = selectedApp ? listing(selectedApp) : undefined;
+  const detailDownloadUrl = detail?.kind === "desktop" ? getStoreActionUrl(detail) : null;
   const visibleItems = page === "Installed"
     ? allResults.filter((item) => item.kind === "bundled" && isInstalled(item))
     : allResults;
@@ -334,11 +341,8 @@ export function OrbitStore(_props: AppProps) {
                   <p>{detail.description}</p>
                   <span className="orbit-store__detail-actions">
                     <Button variant="primary" onClick={() => performPrimaryAction(detail)}>
-                      {getStoreAction(detail, isInstalled(detail)) === "open" ? "Open"
-                        : getStoreAction(detail, isInstalled(detail)) === "visit-website" ? "Visit Website"
-                          : getStoreAction(detail, isInstalled(detail)) === "download" ? "Download"
-                            : "Add to library"}
-                      {detail.kind === "web" ? <ExternalLink size={15} /> : detail.kind === "desktop" ? <Download size={15} /> : <ArrowRight size={15} />}
+                      {getStoreActionLabel(getStoreAction(detail, isInstalled(detail)))}
+                      {detail.kind === "web" || detail.kind === "desktop" ? <ExternalLink size={15} /> : <ArrowRight size={15} />}
                     </Button>
                     {isInstalled(detail) && detail.app && !REQUIRED_APP_IDS.includes(detail.app.id) && <Button variant="quiet" onClick={() => uninstallApp(detail)}>Remove</Button>}
                   </span>
@@ -348,8 +352,9 @@ export function OrbitStore(_props: AppProps) {
               <div className="orbit-store__detail-meta">
                 <div><span>Publisher</span><strong>{detail.publisher}</strong></div>
                 <div><span>License</span><strong>{detail.license}</strong></div>
-                <div><span>Type</span><strong>{detail.kind === "web" ? "Web app" : detail.kind === "desktop" ? "Native desktop app" : "Bundled OrbitOS app"}</strong></div>
-                <div><span>Install status</span><strong>{detail.kind === "bundled" ? isInstalled(detail) ? "Installed in OrbitOS" : "Not in your library" : detail.kind === "web" ? "Opens on publisher website" : "Not installed by OrbitOS"}</strong></div>
+                <div><span>Category</span><strong>{detail.category}</strong></div>
+                <div><span>Compatibility</span><strong>{getStoreCompatibility(detail)}</strong></div>
+                <div><span>Status</span><strong>{getStoreStatus(detail, isInstalled(detail))}</strong></div>
               </div>
               <div className="orbit-store__detail-columns">
                 <section className="orbit-store__detail-panel">
@@ -363,12 +368,20 @@ export function OrbitStore(_props: AppProps) {
                         ? "This web app opens directly on its publisher's site in a new tab. OrbitOS does not embed, install, or send data to it in the background."
                         : "Download opens the publisher's official download page in a new tab. Choose a compatible build there; OrbitOS does not download or run installers."}
                   </p>
+                  {detail.kind === "desktop" && detailDownloadUrl && (
+                    <div className="orbit-store__download-note">
+                      <strong>Before downloading</strong>
+                      <span>Destination: {new URL(detailDownloadUrl).host}</span>
+                      <span>File type: not provided by this listing; the publisher page offers platform-specific installers or packages.</span>
+                      <span>OrbitOS opens the publisher page only. No file is downloaded or installed here.</span>
+                    </div>
+                  )}
                 </section>
                 <section className="orbit-store__detail-panel">
                   <div className="orbit-store__section-heading"><div><h2>Official links</h2><p>Publisher-controlled destinations</p></div><Image size={17} /></div>
                   <div className={`orbit-store__preview-art orbit-store__card-art--${CATEGORY_ART[detail.category]}`}><AppIcon icon={detail.icon} appId={detail.app?.id} size={72} /><span>{detail.name}</span></div>
                   {detail.websiteUrl && <a className="orbit-store__official-link" href={detail.websiteUrl} target="_blank" rel="noopener noreferrer"><Globe size={14} /> Project website <ExternalLink size={13} /></a>}
-                  {detail.downloadUrl && <a className="orbit-store__official-link" href={detail.downloadUrl} target="_blank" rel="noopener noreferrer"><Download size={14} /> Official download page <ExternalLink size={13} /></a>}
+                  {detailDownloadUrl && <a className="orbit-store__official-link" href={detailDownloadUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => { event.preventDefault(); performPrimaryAction(detail); }}><Download size={14} /> Official download page <ExternalLink size={13} /></a>}
                   {detail.sourceUrl && <a className="orbit-store__official-link" href={detail.sourceUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> Source repository</a>}
                   {detail.licenseUrl && <a className="orbit-store__official-link" href={detail.licenseUrl} target="_blank" rel="noopener noreferrer"><ExternalLink size={14} /> License details</a>}
                 </section>
