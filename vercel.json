@@ -1,4 +1,7 @@
 {
+  "installCommand": "cd stardance-webos && npm ci",
+  "buildCommand": "cd stardance-webos && npm run build",
+  "outputDirectory": "stardance-webos/dist",
   "headers": [
     {
       "source": "/(.*)",
